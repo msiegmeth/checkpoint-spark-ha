@@ -1,0 +1,551 @@
+{
+  "topMalwaresChart": {
+    "chartData": [
+      {
+        "value": "7",
+        "label": "Generic.TC.7547YJpg",
+        "incidents": "7",
+        "severity": "MALWARE_SEVERITY.MEDIUM",
+        "name": "Generic.TC.7547YJpg"
+      },
+      {
+        "value": "7",
+        "label": "Generic.TC.d363FtbM",
+        "incidents": "7",
+        "severity": "MALWARE_SEVERITY.MEDIUM",
+        "name": "Generic.TC.d363FtbM"
+      },
+      {
+        "value": "2",
+        "label": "dga.TC.7a70biEI",
+        "incidents": "2",
+        "severity": "MALWARE_SEVERITY.MEDIUM",
+        "name": "dga.TC.7a70biEI"
+      }
+    ],
+    "title": "CHART_TITLE.AMW_TOP_MALWARES_BY_INCIDENTS"
+  },
+  "topUsersByBandwidthChart": {
+    "title": "CHART_TITLE.TOP_USERS_BY_BANDWIDTH"
+  },
+  "possiblyInfectedHostsChart": {
+    "title": "CHART_TITLE.POSSIBLY_INFECTED_HOSTS"
+  },
+  "topUsersBySessionsChart": {
+    "title": "CHART_TITLE.TOP_USERS_BY_SESSIONS"
+  },
+  "reportInfo": {
+    "isCollecting": false,
+    "reportType": "REPORT_TYPE.WEEKLY",
+    "macAddress": "00:00:5E:00:53:01",
+    "firmwareVersion": "R81.10.17 (996004968)",
+    "gatewayName": "SPARK-GW",
+    "timeStamp": 1792266479,
+    "applianceName": "SG_NAME.V1_A",
+    "osTimezoneOffset": "+0200"
+  },
+  "topProtectionsBySessionsChart": {
+    "chartData": [
+      {
+        "cve": "CVE-2002-0237, CVE-2001-0754, CVE-2001-0752, CVE-2001-0057, CVE-2000-0418, CVE-1999-0484",
+        "label": "Max Ping Size",
+        "value": "691",
+        "sessions": "691",
+        "severity": "2",
+        "name": "Max Ping Size"
+      },
+      {
+        "cve": "CVE-2002-0946",
+        "label": "Directory Traversal",
+        "value": "336",
+        "sessions": "336",
+        "severity": "4",
+        "name": "Directory Traversal"
+      },
+      {
+        "cve": "",
+        "label": "Linux System Files Information Disclosure Over HTTP",
+        "value": "168",
+        "sessions": "168",
+        "severity": "4",
+        "name": "Linux System Files Information Disclosure Over HTTP"
+      }
+    ],
+    "title": "CHART_TITLE.TOP_PROTECTIONS_BY_SESSIONS"
+  },
+  "summary": [
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_APPS",
+      "is_counter": 1,
+      "value": "1464184"
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_BYTES",
+      "is_counter": 1,
+      "value": "485237184878"
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_UP_BYTES",
+      "is_counter": 1,
+      "value": "70259159593"
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_DOWN_BYTES",
+      "is_counter": 1,
+      "value": "428074940700"
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_HIGH_RISK_APPS",
+      "is_counter": 1,
+      "value": "14783"
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_PROTECTIONS",
+      "is_counter": 1,
+      "value": "1531"
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_AB_MALWARES",
+      "is_counter": 1,
+      "value": 0
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_TE_MALWARES",
+      "is_counter": 1,
+      "value": 0
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_TE_FILES_SCANNED_CLOUD",
+      "is_counter": 1,
+      "value": 0
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_AV_MALWARES",
+      "is_counter": 1,
+      "value": 101
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_INFECTED_SERVERS",
+      "is_counter": 1,
+      "value": 0
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_CRITICAL_INFECTED_HOSTS",
+      "is_counter": 1,
+      "value": 0
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_NEWLY_INFECTED_HOSTS",
+      "is_counter": 1,
+      "value": 0
+    },
+    {
+      "is_timestamp": 0,
+      "header": "CHART_TITLE.TOTAL_INFECTED_HOSTS",
+      "is_counter": 1,
+      "value": 0
+    }
+  ],
+  "reportStatus": {
+    "generating": false,
+    "modified": "1792266480",
+    "lastSuccess": 1792260000,
+    "lastFailure": 0,
+    "status": "REPORT_STATUS.SUCCEEDED",
+    "reportType": "REPORT_TYPE.WEEKLY",
+    "startDate": 1791655200,
+    "id": 2131
+  },
+  "topHighRiskAppsBySessionsChart": {
+    "chartData": [
+      {
+        "appId": "0",
+        "risk": "APPI_RANK_LEVEL.HIGHRISK",
+        "blocked": "0",
+        "category": "Example category",
+        "bytes": "63152538",
+        "label": "High-risk app 1",
+        "value": "18236",
+        "sessions": "18236",
+        "name": "High-risk app 1",
+        "description": ""
+      },
+      {
+        "appId": "0",
+        "risk": "APPI_RANK_LEVEL.CRITICALRISK",
+        "blocked": "0",
+        "category": "Example category",
+        "bytes": "90519",
+        "label": "High-risk app 2",
+        "value": "10",
+        "sessions": "10",
+        "name": "High-risk app 2",
+        "description": ""
+      }
+    ],
+    "title": "CHART_TITLE.TOP_HIGH_RISK_APPS_BY_SESSIONS"
+  },
+  "topSitesBySessionsChart": {
+    "chartData": [
+      {
+        "bytes": "238698301",
+        "label": "site1.example.com",
+        "value": "33378",
+        "sessions": "33378",
+        "name": "site1.example.com"
+      },
+      {
+        "bytes": "69565504",
+        "label": "site2.example.com",
+        "value": "20138",
+        "sessions": "20138",
+        "name": "site2.example.com"
+      },
+      {
+        "bytes": "116125848",
+        "label": "site3.example.com",
+        "value": "20112",
+        "sessions": "20112",
+        "name": "site3.example.com"
+      }
+    ],
+    "title": "CHART_TITLE.TOP_SITES_BY_SESSIONS"
+  },
+  "topInfectedHostsChart": {
+    "chartData": [
+      {
+        "label": "192.0.2.10",
+        "name": "192.0.2.10",
+        "value": "13"
+      },
+      {
+        "label": "192.0.2.11",
+        "name": "192.0.2.11",
+        "value": "4"
+      },
+      {
+        "label": "192.0.2.12",
+        "name": "192.0.2.12",
+        "value": "4"
+      }
+    ],
+    "title": "CHART_TITLE.AMW_TOP_HOSTS_BY_INCIDENTS"
+  },
+  "infectedHostsChart": {
+    "title": "CHART_TITLE.INFECTED_HOSTS"
+  },
+  "topHighRiskUsersBySessionsChart": {
+    "title": "CHART_TITLE.TOP_HIGH_RISK_USERS_BY_SESSIONS"
+  },
+  "topCategoriesBySessionsChart": {
+    "chartData": [
+      {
+        "bytes": "110054229544",
+        "categoryId": "51000002",
+        "label": "Low Risk",
+        "value": "329928",
+        "sessions": "329928",
+        "name": "Low Risk"
+      },
+      {
+        "bytes": "94851243984",
+        "categoryId": "1",
+        "label": "Computers / Internet",
+        "value": "215412",
+        "sessions": "215412",
+        "name": "Computers / Internet"
+      },
+      {
+        "bytes": "3411488510",
+        "categoryId": "51",
+        "label": "Business / Economy",
+        "value": "88664",
+        "sessions": "88664",
+        "name": "Business / Economy"
+      }
+    ],
+    "title": "CHART_TITLE.TOP_CATEGORIES_BY_SESSIONS"
+  },
+  "bladesStatus": [
+    {
+      "bladeCode": "BLADE.FW",
+      "enabled": 1,
+      "_icon": "FW",
+      "name": "FW"
+    },
+    {
+      "bladeCode": "BLADE.VPN_REMOTE_ACCESS",
+      "enabled": 1,
+      "_icon": "VPN-RA",
+      "name": "VPN-RA"
+    },
+    {
+      "bladeCode": "BLADE.VPN_SITE_TO_SITE",
+      "enabled": 0,
+      "_icon": "VPN-S2S",
+      "name": "VPN-S2S"
+    },
+    {
+      "bladeCode": "BLADE.IPS",
+      "enabled": 1,
+      "_icon": "IPS",
+      "name": "IPS"
+    },
+    {
+      "bladeCode": "BLADE.ANTI_VIRUS",
+      "enabled": 1,
+      "_icon": "AV",
+      "name": "AV",
+      "bladeVersion": "BLADE_VERSION.NEW_AV"
+    },
+    {
+      "bladeCode": "BLADE.URL_FILTERING",
+      "enabled": 1,
+      "_icon": "URLF",
+      "name": "URLF"
+    },
+    {
+      "bladeCode": "BLADE.ANTI_SPAM",
+      "enabled": 1,
+      "_icon": "ASPAM",
+      "name": "ASPAM"
+    },
+    {
+      "bladeCode": "BLADE.QOS",
+      "enabled": 1,
+      "_icon": "ADNC",
+      "name": "ADNC"
+    },
+    {
+      "bladeCode": "BLADE.IDENTITY_AWARENESS",
+      "enabled": 1,
+      "_icon": "IA",
+      "name": "IA"
+    },
+    {
+      "bladeCode": "BLADE.APPLICATION_CONTROL",
+      "enabled": 1,
+      "_icon": "APCL",
+      "name": "APCL"
+    },
+    {
+      "bladeCode": "BLADE.ANTI_BOT",
+      "enabled": 1,
+      "_icon": "AB",
+      "name": "AB"
+    },
+    {
+      "bladeCode": "BLADE.THREAT_EMULATION",
+      "enabled": 0,
+      "_icon": "TE",
+      "name": "TE"
+    }
+  ],
+  "topAppsByBandwidthChart": {
+    "chartData": [
+      {
+        "appId": "10032012",
+        "risk": "APPI_RANK_LEVEL.NONERISK",
+        "blocked": "0",
+        "category": "",
+        "bytes": "135217667404",
+        "downBytes": "137465206965",
+        "bytesFromTotal": 27.8663036589,
+        "label": "Google Video",
+        "value": "135217667404",
+        "upBytes": "2047756955",
+        "sessions": "4187",
+        "name": "Google Video",
+        "description": ""
+      },
+      {
+        "appId": "60519193",
+        "risk": "APPI_RANK_LEVEL.NONERISK",
+        "blocked": "0",
+        "category": "",
+        "bytes": "110649737795",
+        "downBytes": "87624248721",
+        "bytesFromTotal": 22.803227214093,
+        "label": "Quic Protocol",
+        "value": "110649737795",
+        "upBytes": "23025900097",
+        "sessions": "130907",
+        "name": "Quic Protocol",
+        "description": ""
+      },
+      {
+        "appId": "60341234",
+        "risk": "APPI_RANK_LEVEL.NONERISK",
+        "blocked": "0",
+        "category": "",
+        "bytes": "46527666520",
+        "downBytes": "30044408217",
+        "bytesFromTotal": 9.5886440631499,
+        "label": "Unknown Traffic",
+        "value": "46527666520",
+        "upBytes": "16505408116",
+        "sessions": "68271",
+        "name": "Unknown Traffic",
+        "description": ""
+      }
+    ],
+    "title": "CHART_TITLE.TOP_APPS_BY_BANDWIDTH"
+  },
+  "topCategoriesByBandwidthChart": {
+    "chartData": [
+      {
+        "bytes": "110054229544",
+        "categoryId": "51000002",
+        "bytesFromTotal": 22.680502025349,
+        "downBytes": "93125957257",
+        "label": "Low Risk",
+        "value": "110054229544",
+        "upBytes": "17093508643",
+        "sessions": "327542",
+        "name": "Low Risk"
+      },
+      {
+        "bytes": "94851243984",
+        "categoryId": "1",
+        "bytesFromTotal": 19.54739804367,
+        "downBytes": "78741529825",
+        "label": "Computers / Internet",
+        "value": "94851243984",
+        "upBytes": "16188562170",
+        "sessions": "211859",
+        "name": "Computers / Internet"
+      },
+      {
+        "bytes": "11904836507",
+        "categoryId": "52000058",
+        "bytesFromTotal": 2.453405649444,
+        "downBytes": "11406012323",
+        "label": "Games",
+        "value": "11904836507",
+        "upBytes": "548522657",
+        "sessions": "23680",
+        "name": "Games"
+      }
+    ],
+    "title": "CHART_TITLE.TOP_CATEGORIES_BY_BANDWIDTH"
+  },
+  "bandwidthUsageChart": {
+    "chartData": [
+      {
+        "value": "34418586185",
+        "label": "1792266479",
+        "upBytes": "3034169878",
+        "downBytes": "31422149896",
+        "bytes": "34418586185",
+        "name": "1792266479"
+      },
+      {
+        "value": "42354427805",
+        "label": "1792223279",
+        "upBytes": "4929526796",
+        "downBytes": "37438913290",
+        "bytes": "42354427805",
+        "name": "1792223279"
+      },
+      {
+        "value": "48067360360",
+        "label": "1792180079",
+        "upBytes": "3147339278",
+        "downBytes": "49263560827",
+        "bytes": "48067360360",
+        "name": "1792180079"
+      }
+    ],
+    "title": "CHART_TITLE.TOTAL_BANDWIDTH"
+  },
+  "topSitesByBandwidthChart": {
+    "chartData": [
+      {
+        "bytes": "30444959760",
+        "bytesFromTotal": 6.2742429287761,
+        "label": "site1.example.com",
+        "value": "30444959760",
+        "upBytes": "248667623",
+        "sessions": "708",
+        "name": "site1.example.com",
+        "downBytes": "30197112290"
+      },
+      {
+        "bytes": "27877615640",
+        "bytesFromTotal": 5.7451523726503,
+        "label": "site2.example.com",
+        "value": "27877615640",
+        "upBytes": "13932466238",
+        "sessions": "4010",
+        "name": "site2.example.com",
+        "downBytes": "13945809201"
+      },
+      {
+        "bytes": "9745877292",
+        "bytesFromTotal": 2.0084770078885,
+        "label": "site3.example.com",
+        "value": "9745877292",
+        "upBytes": "321969300",
+        "sessions": "77",
+        "name": "site3.example.com",
+        "downBytes": "9423916166"
+      }
+    ],
+    "title": "CHART_TITLE.TOP_SITES_BY_BANDWIDTH"
+  },
+  "bladeCode": "TOP.APPI",
+  "topAppsBySessionsChart": {
+    "chartData": [
+      {
+        "appId": "60342613",
+        "risk": "APPI_RANK_LEVEL.LOWRISK",
+        "blocked": "0",
+        "category": "Network Protocols",
+        "bytes": "108456780",
+        "label": "STUN Protocol",
+        "value": "311067",
+        "sessions": "311067",
+        "name": "STUN Protocol",
+        "description": ""
+      },
+      {
+        "appId": "60519193",
+        "risk": "APPI_RANK_LEVEL.LOWRISK",
+        "blocked": "0",
+        "category": "Network Protocols",
+        "bytes": "110649737795",
+        "label": "Quic Protocol",
+        "value": "138249",
+        "sessions": "138249",
+        "name": "Quic Protocol",
+        "description": ""
+      },
+      {
+        "appId": "60460820",
+        "risk": "APPI_RANK_LEVEL.LOWRISK",
+        "blocked": "0",
+        "category": "Computers / Internet",
+        "bytes": "9159207105",
+        "label": "Apple Services",
+        "value": "122365",
+        "sessions": "122365",
+        "name": "Apple Services",
+        "description": ""
+      }
+    ],
+    "title": "CHART_TITLE.TOP_APPS_BY_SESSIONS"
+  }
+}

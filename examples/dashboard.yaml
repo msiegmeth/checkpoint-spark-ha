@@ -1,0 +1,174 @@
+# Example dashboard for the Check Point Quantum Spark integration.
+# Standard cards only. Settings > Dashboards > Add dashboard > New from scratch,
+# then ⋮ > Edit > ⋮ > Raw configuration editor and paste this file.
+# Entity IDs assume the device name "Quantum Spark" without area prefix;
+# adjust "sensor.quantum_spark_" if yours differ.
+title: "Check Point"
+views:
+  - title: "Security"
+    path: "security"
+    type: "sections"
+    max_columns: 4
+    icon: "mdi:shield-half-full"
+    sections:
+      - type: "grid"
+        cards:
+          - type: "heading"
+            heading: "Last 24 hours"
+          - type: "tile"
+            entity: "sensor.quantum_spark_daily_traffic"
+            name: "Traffic"
+          - type: "tile"
+            entity: "sensor.quantum_spark_daily_sessions"
+            name: "Sessions"
+          - type: "tile"
+            entity: "sensor.quantum_spark_daily_download"
+            name: "Download"
+          - type: "tile"
+            entity: "sensor.quantum_spark_daily_upload"
+            name: "Upload"
+          - type: "tile"
+            entity: "sensor.quantum_spark_daily_ips_events"
+            name: "IPS events"
+          - type: "tile"
+            entity: "sensor.quantum_spark_daily_virus_incidents"
+            name: "Virus incidents"
+          - type: "tile"
+            entity: "sensor.quantum_spark_daily_bot_incidents"
+            name: "Bot incidents"
+          - type: "tile"
+            entity: "sensor.quantum_spark_daily_infected_hosts"
+            name: "Infected hosts"
+      - type: "grid"
+        cards:
+          - type: "heading"
+            heading: "Week & month"
+          - type: "entities"
+            entities:
+              - type: "section"
+                label: "Week"
+              - entity: "sensor.quantum_spark_weekly_traffic"
+                name: "Traffic"
+              - entity: "sensor.quantum_spark_weekly_sessions"
+                name: "Sessions"
+              - entity: "sensor.quantum_spark_weekly_high_risk_app_sessions"
+                name: "High-risk app sessions"
+              - entity: "sensor.quantum_spark_weekly_ips_events"
+                name: "IPS events"
+              - entity: "sensor.quantum_spark_weekly_virus_incidents"
+                name: "Virus incidents"
+              - entity: "sensor.quantum_spark_weekly_bot_incidents"
+                name: "Bot incidents"
+              - entity: "sensor.quantum_spark_weekly_infected_hosts"
+                name: "Infected hosts"
+              - type: "section"
+                label: "Month"
+              - entity: "sensor.quantum_spark_monthly_traffic"
+                name: "Traffic"
+              - entity: "sensor.quantum_spark_monthly_sessions"
+                name: "Sessions"
+              - entity: "sensor.quantum_spark_monthly_high_risk_app_sessions"
+                name: "High-risk app sessions"
+              - entity: "sensor.quantum_spark_monthly_ips_events"
+                name: "IPS events"
+              - entity: "sensor.quantum_spark_monthly_virus_incidents"
+                name: "Virus incidents"
+              - entity: "sensor.quantum_spark_monthly_bot_incidents"
+                name: "Bot incidents"
+              - entity: "sensor.quantum_spark_monthly_infected_hosts"
+                name: "Infected hosts"
+      - type: "grid"
+        cards:
+          - type: "heading"
+            heading: "Top lists"
+          - type: "markdown"
+            title: "Top IPS protections (week)"
+            content: |-
+              {% set l = (state_attr('sensor.quantum_spark_weekly_ips_events', 'top_protections') or [])[:10] %}
+              {% if l %}
+              | Name | Hits | Severity |
+              |---|---:|---:|
+              {% for i in l %}| {{ i.name }} | {{ i.sessions }} | {{ i.severity }} |
+              {% endfor %}{% else %}_none_{% endif %}
+          - type: "markdown"
+            title: "Top malware (week)"
+            content: |-
+              {% set l = (state_attr('sensor.quantum_spark_weekly_virus_incidents', 'top_malwares') or [])[:10] %}
+              {% if l %}
+              | Name | Incidents | Severity |
+              |---|---:|---|
+              {% for i in l %}| {{ i.name }} | {{ i.incidents }} | {{ i.severity }} |
+              {% endfor %}{% else %}_none_{% endif %}
+          - type: "markdown"
+            title: "Hosts with malware incidents (week)"
+            content: |-
+              {% set l = (state_attr('sensor.quantum_spark_weekly_infected_hosts', 'top_infected_hosts') or [])[:10] %}
+              {% if l %}
+              | Host | Incidents |
+              |---|---:|
+              {% for i in l %}| {{ i.name }} | {{ i.count }} |
+              {% endfor %}{% else %}_none_{% endif %}
+          - type: "markdown"
+            title: "Top apps by traffic (24 h)"
+            content: |-
+              {% set l = (state_attr('sensor.quantum_spark_daily_traffic', 'top_apps_by_bandwidth') or [])[:10] %}
+              {% if l %}
+              | App | Traffic | Sessions |
+              |---|---:|---:|
+              {% for i in l %}| {{ i.name }} | {{ ((i.bytes or 0) / 1e9) | round(2) }} GB | {{ i.sessions }} |
+              {% endfor %}{% else %}_none_{% endif %}
+          - type: "markdown"
+            title: "Top sites by traffic (24 h)"
+            content: |-
+              {% set l = (state_attr('sensor.quantum_spark_daily_traffic', 'top_sites_by_bandwidth') or [])[:10] %}
+              {% if l %}
+              | Name | Traffic |
+              |---|---:|
+              {% for i in l %}| {{ i.name }} | {{ ((i.bytes or 0) / 1e9) | round(2) }} GB |
+              {% endfor %}{% else %}_none_{% endif %}
+      - type: "grid"
+        cards:
+          - type: "heading"
+            heading: "History"
+          - type: "history-graph"
+            title: "Traffic (24 h)"
+            hours_to_show: 168
+            entities:
+              - entity: "sensor.quantum_spark_daily_download"
+                name: "Download"
+              - entity: "sensor.quantum_spark_daily_upload"
+                name: "Upload"
+          - type: "history-graph"
+            title: "IPS events / Virus incidents (24 h)"
+            hours_to_show: 168
+            entities:
+              - entity: "sensor.quantum_spark_daily_ips_events"
+                name: "IPS events"
+              - entity: "sensor.quantum_spark_daily_virus_incidents"
+                name: "Virus incidents"
+          - type: "markdown"
+            title: "Traffic per hour (24 h)"
+            content: |-
+              {% set l = (state_attr('sensor.quantum_spark_daily_traffic', 'bandwidth_history') or [])[:24] %}
+              {% if l %}
+              | Time | Down | Up |
+              |---|---:|---:|
+              {% for i in l %}| {{ as_timestamp(i.time) | timestamp_custom('%H:%M') }} | {{ ((i.down_bytes or 0) / 1e9) | round(2) }} GB | {{ ((i.up_bytes or 0) / 1e9) | round(2) }} GB |
+              {% endfor %}{% else %}_none_{% endif %}
+      - type: "grid"
+        cards:
+          - type: "heading"
+            heading: "System"
+          - type: "markdown"
+            title: "Software blades"
+            content: |-
+              {% set b = state_attr('sensor.quantum_spark_active_blades', 'blades') or {} %}
+              {% for k, v in b.items() %}{{ '✅' if v else '⬜' }} {{ k | replace('_', ' ') | upper }}  
+              {% endfor %}
+          - type: "entities"
+            title: "Report status"
+            entities:
+              - "sensor.quantum_spark_hourly_report"
+              - "sensor.quantum_spark_daily_report"
+              - "sensor.quantum_spark_weekly_report"
+              - "sensor.quantum_spark_monthly_report"

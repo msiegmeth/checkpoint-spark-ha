@@ -16,6 +16,20 @@ refuses clish commands that do not start with `show`.
 
 ## Report structure
 
-An anonymised sample is in [report-sample.json](report-sample.json).
+An anonymised sample (weekly report, lists shortened to 3 entries) is in
+[report-sample.json](report-sample.json). Observed on R81.10.17:
+
+| Key | Content |
+|---|---|
+| `reportInfo` | `timeStamp` (epoch, UTC), `firmwareVersion`, `gatewayName`, `macAddress`, `reportType` |
+| `reportStatus` | `startDate` (epoch), `status`, `lastSuccess` |
+| `summary[]` | `{header: "CHART_TITLE.TOTAL_…", value}`; values are strings or numbers |
+| `*Chart` | `{title, chartData[]}`; `chartData` missing when the list is empty |
+| `bandwidthUsageChart` | one entry per hour (hourly: per minute, weekly: 14, monthly: 30) with `label` = epoch, `downBytes`, `upBytes` |
+| `bladesStatus[]` | `{bladeCode: "BLADE.…", enabled: 0/1}` |
+
+Differences: the hourly report has no `TOTAL_PROTECTIONS` and
+`TOTAL_HIGH_RISK_APPS`; the daily report has no `TOTAL_HIGH_RISK_APPS`.
+All numbers in `chartData` are strings.
 The integration is written to tolerate missing fields and firmware
 differences: absent values lead to `unknown`, not to errors.
