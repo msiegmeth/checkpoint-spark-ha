@@ -1,0 +1,74 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mit Quantum-Spark-Gateway verbinden",
+        "description": "Lokale REST API des Gateways (am Gateway mit `set rest-api mode on` aktivieren). Ein Read-only-Admin genügt.",
+        "data": {
+          "host": "Host / IP",
+          "port": "Port",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "verify_ssl": "SSL-Zertifikat prüfen"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Erneut anmelden",
+        "description": "Anmeldung an {host} fehlgeschlagen. Bitte Zugangsdaten erneut eingeben.",
+        "data": {
+          "username": "Benutzername",
+          "password": "Passwort"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Keine Verbindung zum Gateway",
+      "invalid_auth": "Benutzername oder Passwort falsch",
+      "unknown": "Unerwarteter Fehler"
+    },
+    "abort": {
+      "already_configured": "Dieses Gateway ist bereits eingerichtet",
+      "reauth_successful": "Erneute Anmeldung erfolgreich"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Optionen",
+        "data": {
+          "report_types": "Report-Typen",
+          "scan_interval": "Abfrageintervall"
+        }
+      }
+    },
+    "error": {
+      "no_report_type": "Mindestens einen Report-Typ wählen"
+    }
+  },
+  "selector": {
+    "report_type": {
+      "options": {
+        "hourly": "Stündlich",
+        "daily": "Täglich",
+        "weekly": "Wöchentlich",
+        "monthly": "Monatlich"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "hourly_report_time": {
+        "name": "Stand Stündlich"
+      },
+      "daily_report_time": {
+        "name": "Stand Täglich"
+      },
+      "weekly_report_time": {
+        "name": "Stand Wöchentlich"
+      },
+      "monthly_report_time": {
+        "name": "Stand Monatlich"
+      }
+    }
+  }
+}

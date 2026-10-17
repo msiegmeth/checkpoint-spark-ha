@@ -1,0 +1,74 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Quantum Spark gateway",
+        "description": "Local REST API of the gateway (enable on the gateway with `set rest-api mode on`). A read-only admin is sufficient.",
+        "data": {
+          "host": "Host / IP",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "verify_ssl": "Verify SSL certificate"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate",
+        "description": "Login to {host} failed. Enter the credentials again.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the gateway",
+      "invalid_auth": "Invalid username or password",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This gateway is already configured",
+      "reauth_successful": "Re-authentication successful"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "data": {
+          "report_types": "Report types",
+          "scan_interval": "Polling interval"
+        }
+      }
+    },
+    "error": {
+      "no_report_type": "Select at least one report type"
+    }
+  },
+  "selector": {
+    "report_type": {
+      "options": {
+        "hourly": "Hourly",
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "monthly": "Monthly"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "hourly_report_time": {
+        "name": "Hourly report"
+      },
+      "daily_report_time": {
+        "name": "Daily report"
+      },
+      "weekly_report_time": {
+        "name": "Weekly report"
+      },
+      "monthly_report_time": {
+        "name": "Monthly report"
+      }
+    }
+  }
+}

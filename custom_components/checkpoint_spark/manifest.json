@@ -1,0 +1,12 @@
+{
+  "domain": "checkpoint_spark",
+  "name": "Check Point Quantum Spark",
+  "codeowners": ["@msiegmeth"],
+  "config_flow": true,
+  "documentation": "https://github.com/msiegmeth/checkpoint-spark-ha",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/msiegmeth/checkpoint-spark-ha/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
