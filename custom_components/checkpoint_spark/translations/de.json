@@ -57,17 +57,188 @@
   },
   "entity": {
     "sensor": {
+      "hourly_traffic": {
+        "name": "Datenvolumen stündlich"
+      },
+      "hourly_download": {
+        "name": "Download stündlich"
+      },
+      "hourly_upload": {
+        "name": "Upload stündlich"
+      },
+      "hourly_sessions": {
+        "name": "Sitzungen stündlich"
+      },
+      "hourly_high_risk_sessions": {
+        "name": "Sitzungen riskanter Apps stündlich"
+      },
+      "hourly_ips_events": {
+        "name": "IPS-Ereignisse stündlich"
+      },
+      "hourly_virus_incidents": {
+        "name": "Viren-Vorfälle stündlich"
+      },
+      "hourly_bot_incidents": {
+        "name": "Bot-Vorfälle stündlich"
+      },
+      "hourly_emulation_malware": {
+        "name": "Threat-Emulation-Malware stündlich"
+      },
+      "hourly_emulated_files": {
+        "name": "Emulierte Dateien stündlich"
+      },
+      "hourly_infected_hosts": {
+        "name": "Infizierte Hosts stündlich"
+      },
+      "hourly_new_infected_hosts": {
+        "name": "Neu infizierte Hosts stündlich"
+      },
+      "hourly_critical_infected_hosts": {
+        "name": "Kritisch infizierte Hosts stündlich"
+      },
+      "hourly_infected_servers": {
+        "name": "Infizierte Server stündlich"
+      },
       "hourly_report_time": {
-        "name": "Stand Stündlich"
+        "name": "Stand stündlich"
+      },
+      "daily_traffic": {
+        "name": "Datenvolumen täglich"
+      },
+      "daily_download": {
+        "name": "Download täglich"
+      },
+      "daily_upload": {
+        "name": "Upload täglich"
+      },
+      "daily_sessions": {
+        "name": "Sitzungen täglich"
+      },
+      "daily_high_risk_sessions": {
+        "name": "Sitzungen riskanter Apps täglich"
+      },
+      "daily_ips_events": {
+        "name": "IPS-Ereignisse täglich"
+      },
+      "daily_virus_incidents": {
+        "name": "Viren-Vorfälle täglich"
+      },
+      "daily_bot_incidents": {
+        "name": "Bot-Vorfälle täglich"
+      },
+      "daily_emulation_malware": {
+        "name": "Threat-Emulation-Malware täglich"
+      },
+      "daily_emulated_files": {
+        "name": "Emulierte Dateien täglich"
+      },
+      "daily_infected_hosts": {
+        "name": "Infizierte Hosts täglich"
+      },
+      "daily_new_infected_hosts": {
+        "name": "Neu infizierte Hosts täglich"
+      },
+      "daily_critical_infected_hosts": {
+        "name": "Kritisch infizierte Hosts täglich"
+      },
+      "daily_infected_servers": {
+        "name": "Infizierte Server täglich"
       },
       "daily_report_time": {
-        "name": "Stand Täglich"
+        "name": "Stand täglich"
+      },
+      "weekly_traffic": {
+        "name": "Datenvolumen wöchentlich"
+      },
+      "weekly_download": {
+        "name": "Download wöchentlich"
+      },
+      "weekly_upload": {
+        "name": "Upload wöchentlich"
+      },
+      "weekly_sessions": {
+        "name": "Sitzungen wöchentlich"
+      },
+      "weekly_high_risk_sessions": {
+        "name": "Sitzungen riskanter Apps wöchentlich"
+      },
+      "weekly_ips_events": {
+        "name": "IPS-Ereignisse wöchentlich"
+      },
+      "weekly_virus_incidents": {
+        "name": "Viren-Vorfälle wöchentlich"
+      },
+      "weekly_bot_incidents": {
+        "name": "Bot-Vorfälle wöchentlich"
+      },
+      "weekly_emulation_malware": {
+        "name": "Threat-Emulation-Malware wöchentlich"
+      },
+      "weekly_emulated_files": {
+        "name": "Emulierte Dateien wöchentlich"
+      },
+      "weekly_infected_hosts": {
+        "name": "Infizierte Hosts wöchentlich"
+      },
+      "weekly_new_infected_hosts": {
+        "name": "Neu infizierte Hosts wöchentlich"
+      },
+      "weekly_critical_infected_hosts": {
+        "name": "Kritisch infizierte Hosts wöchentlich"
+      },
+      "weekly_infected_servers": {
+        "name": "Infizierte Server wöchentlich"
       },
       "weekly_report_time": {
-        "name": "Stand Wöchentlich"
+        "name": "Stand wöchentlich"
+      },
+      "monthly_traffic": {
+        "name": "Datenvolumen monatlich"
+      },
+      "monthly_download": {
+        "name": "Download monatlich"
+      },
+      "monthly_upload": {
+        "name": "Upload monatlich"
+      },
+      "monthly_sessions": {
+        "name": "Sitzungen monatlich"
+      },
+      "monthly_high_risk_sessions": {
+        "name": "Sitzungen riskanter Apps monatlich"
+      },
+      "monthly_ips_events": {
+        "name": "IPS-Ereignisse monatlich"
+      },
+      "monthly_virus_incidents": {
+        "name": "Viren-Vorfälle monatlich"
+      },
+      "monthly_bot_incidents": {
+        "name": "Bot-Vorfälle monatlich"
+      },
+      "monthly_emulation_malware": {
+        "name": "Threat-Emulation-Malware monatlich"
+      },
+      "monthly_emulated_files": {
+        "name": "Emulierte Dateien monatlich"
+      },
+      "monthly_infected_hosts": {
+        "name": "Infizierte Hosts monatlich"
+      },
+      "monthly_new_infected_hosts": {
+        "name": "Neu infizierte Hosts monatlich"
+      },
+      "monthly_critical_infected_hosts": {
+        "name": "Kritisch infizierte Hosts monatlich"
+      },
+      "monthly_infected_servers": {
+        "name": "Infizierte Server monatlich"
       },
       "monthly_report_time": {
-        "name": "Stand Monatlich"
+        "name": "Stand monatlich"
+      },
+      "active_blades": {
+        "name": "Aktive Blades"
       }
     }
   }

@@ -57,17 +57,188 @@
   },
   "entity": {
     "sensor": {
+      "hourly_traffic": {
+        "name": "Hourly traffic"
+      },
+      "hourly_download": {
+        "name": "Hourly download"
+      },
+      "hourly_upload": {
+        "name": "Hourly upload"
+      },
+      "hourly_sessions": {
+        "name": "Hourly sessions"
+      },
+      "hourly_high_risk_sessions": {
+        "name": "Hourly high-risk app sessions"
+      },
+      "hourly_ips_events": {
+        "name": "Hourly IPS events"
+      },
+      "hourly_virus_incidents": {
+        "name": "Hourly virus incidents"
+      },
+      "hourly_bot_incidents": {
+        "name": "Hourly bot incidents"
+      },
+      "hourly_emulation_malware": {
+        "name": "Hourly Threat Emulation malware"
+      },
+      "hourly_emulated_files": {
+        "name": "Hourly emulated files"
+      },
+      "hourly_infected_hosts": {
+        "name": "Hourly infected hosts"
+      },
+      "hourly_new_infected_hosts": {
+        "name": "Hourly newly infected hosts"
+      },
+      "hourly_critical_infected_hosts": {
+        "name": "Hourly critically infected hosts"
+      },
+      "hourly_infected_servers": {
+        "name": "Hourly infected servers"
+      },
       "hourly_report_time": {
         "name": "Hourly report"
+      },
+      "daily_traffic": {
+        "name": "Daily traffic"
+      },
+      "daily_download": {
+        "name": "Daily download"
+      },
+      "daily_upload": {
+        "name": "Daily upload"
+      },
+      "daily_sessions": {
+        "name": "Daily sessions"
+      },
+      "daily_high_risk_sessions": {
+        "name": "Daily high-risk app sessions"
+      },
+      "daily_ips_events": {
+        "name": "Daily IPS events"
+      },
+      "daily_virus_incidents": {
+        "name": "Daily virus incidents"
+      },
+      "daily_bot_incidents": {
+        "name": "Daily bot incidents"
+      },
+      "daily_emulation_malware": {
+        "name": "Daily Threat Emulation malware"
+      },
+      "daily_emulated_files": {
+        "name": "Daily emulated files"
+      },
+      "daily_infected_hosts": {
+        "name": "Daily infected hosts"
+      },
+      "daily_new_infected_hosts": {
+        "name": "Daily newly infected hosts"
+      },
+      "daily_critical_infected_hosts": {
+        "name": "Daily critically infected hosts"
+      },
+      "daily_infected_servers": {
+        "name": "Daily infected servers"
       },
       "daily_report_time": {
         "name": "Daily report"
       },
+      "weekly_traffic": {
+        "name": "Weekly traffic"
+      },
+      "weekly_download": {
+        "name": "Weekly download"
+      },
+      "weekly_upload": {
+        "name": "Weekly upload"
+      },
+      "weekly_sessions": {
+        "name": "Weekly sessions"
+      },
+      "weekly_high_risk_sessions": {
+        "name": "Weekly high-risk app sessions"
+      },
+      "weekly_ips_events": {
+        "name": "Weekly IPS events"
+      },
+      "weekly_virus_incidents": {
+        "name": "Weekly virus incidents"
+      },
+      "weekly_bot_incidents": {
+        "name": "Weekly bot incidents"
+      },
+      "weekly_emulation_malware": {
+        "name": "Weekly Threat Emulation malware"
+      },
+      "weekly_emulated_files": {
+        "name": "Weekly emulated files"
+      },
+      "weekly_infected_hosts": {
+        "name": "Weekly infected hosts"
+      },
+      "weekly_new_infected_hosts": {
+        "name": "Weekly newly infected hosts"
+      },
+      "weekly_critical_infected_hosts": {
+        "name": "Weekly critically infected hosts"
+      },
+      "weekly_infected_servers": {
+        "name": "Weekly infected servers"
+      },
       "weekly_report_time": {
         "name": "Weekly report"
       },
+      "monthly_traffic": {
+        "name": "Monthly traffic"
+      },
+      "monthly_download": {
+        "name": "Monthly download"
+      },
+      "monthly_upload": {
+        "name": "Monthly upload"
+      },
+      "monthly_sessions": {
+        "name": "Monthly sessions"
+      },
+      "monthly_high_risk_sessions": {
+        "name": "Monthly high-risk app sessions"
+      },
+      "monthly_ips_events": {
+        "name": "Monthly IPS events"
+      },
+      "monthly_virus_incidents": {
+        "name": "Monthly virus incidents"
+      },
+      "monthly_bot_incidents": {
+        "name": "Monthly bot incidents"
+      },
+      "monthly_emulation_malware": {
+        "name": "Monthly Threat Emulation malware"
+      },
+      "monthly_emulated_files": {
+        "name": "Monthly emulated files"
+      },
+      "monthly_infected_hosts": {
+        "name": "Monthly infected hosts"
+      },
+      "monthly_new_infected_hosts": {
+        "name": "Monthly newly infected hosts"
+      },
+      "monthly_critical_infected_hosts": {
+        "name": "Monthly critically infected hosts"
+      },
+      "monthly_infected_servers": {
+        "name": "Monthly infected servers"
+      },
       "monthly_report_time": {
         "name": "Monthly report"
+      },
+      "active_blades": {
+        "name": "Active blades"
       }
     }
   }

@@ -2,19 +2,238 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
-from homeassistant.const import EntityCategory
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
+)
+from homeassistant.const import EntityCategory, UnitOfInformation
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .coordinator import SparkConfigEntry, SparkCoordinator
 
 PARALLEL_UPDATES = 0
+
+# Attributes holding lists; kept out of the recorder.
+LIST_ATTRIBUTES = frozenset(
+    {
+        "top_apps_by_bandwidth",
+        "top_sites_by_bandwidth",
+        "top_categories_by_bandwidth",
+        "top_users_by_bandwidth",
+        "bandwidth_history",
+        "top_apps_by_sessions",
+        "top_sites_by_sessions",
+        "top_categories_by_sessions",
+        "top_users_by_sessions",
+        "top_high_risk_apps",
+        "top_high_risk_users",
+        "top_protections",
+        "top_malwares",
+        "top_infected_hosts",
+        "infected_hosts",
+        "possibly_infected_hosts",
+        "blades",
+    }
+)
+
+_PREFIXES = ("MALWARE_SEVERITY.", "APPI_RANK_LEVEL.")
+_INT_FIELDS = {
+    "sessions": "sessions",
+    "bytes": "bytes",
+    "downBytes": "down_bytes",
+    "upBytes": "up_bytes",
+    "incidents": "incidents",
+    "blocked": "blocked",
+}
+_TEXT_FIELDS = {"severity": "severity", "risk": "risk", "category": "category", "cve": "cve"}
+
+
+def _int(value: Any) -> int | None:
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _summary(report: dict[str, Any], header: str) -> int | None:
+    for item in report.get("summary") or []:
+        if isinstance(item, dict) and str(item.get("header", "")).endswith(f".{header}"):
+            return _int(item.get("value"))
+    return None
+
+
+def _has_summary(report: dict[str, Any], header: str) -> bool:
+    return any(
+        isinstance(i, dict) and str(i.get("header", "")).endswith(f".{header}")
+        for i in report.get("summary") or []
+    )
+
+
+def _compact(item: dict[str, Any]) -> dict[str, Any]:
+    """Reduce a chart entry to readable, typed fields."""
+    out: dict[str, Any] = {"name": item.get("name") or item.get("label")}
+    for src, dst in _INT_FIELDS.items():
+        if (val := _int(item.get(src))) is not None:
+            out[dst] = val
+    for src, dst in _TEXT_FIELDS.items():
+        val = item.get(src)
+        if val not in (None, ""):
+            val = str(val)
+            for prefix in _PREFIXES:
+                val = val.removeprefix(prefix)
+            if dst == "risk":
+                val = val.lower().removesuffix("risk") or None
+            elif dst == "severity":
+                val = val.lower()
+            out[dst] = val
+    if len(out) == 1 and (val := _int(item.get("value"))) is not None:
+        out["count"] = val
+    return out
+
+
+def _chart(report: dict[str, Any], key: str) -> list[dict[str, Any]]:
+    chart = report.get(key)
+    data = chart.get("chartData") if isinstance(chart, dict) else None
+    if not isinstance(data, list):
+        return []
+    return [_compact(i) for i in data if isinstance(i, dict)]
+
+
+def _history(report: dict[str, Any]) -> list[dict[str, Any]]:
+    chart = report.get("bandwidthUsageChart")
+    data = chart.get("chartData") if isinstance(chart, dict) else None
+    out = []
+    for item in data if isinstance(data, list) else []:
+        if not isinstance(item, dict) or (ts := _int(item.get("label"))) is None:
+            continue
+        out.append(
+            {
+                "time": dt_util.utc_from_timestamp(ts).isoformat(),
+                "down_bytes": _int(item.get("downBytes")),
+                "up_bytes": _int(item.get("upBytes")),
+            }
+        )
+    return out
+
+
+def _charts(**keys: str) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    def build(report: dict[str, Any]) -> dict[str, Any]:
+        return {attr: _chart(report, key) for attr, key in keys.items()}
+
+    return build
+
+
+@dataclass(frozen=True, kw_only=True)
+class SparkSummaryDescription(SensorEntityDescription):
+    """A value from the report summary, plus optional list attributes."""
+
+    header: str
+    attrs_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = field(default=None)
+
+
+def _bytes(key: str, header: str, icon: str, attrs_fn=None) -> SparkSummaryDescription:
+    return SparkSummaryDescription(
+        key=key,
+        header=header,
+        icon=icon,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        suggested_display_precision=2,
+        attrs_fn=attrs_fn,
+    )
+
+
+def _count(key: str, header: str, icon: str, attrs_fn=None, enabled=True) -> SparkSummaryDescription:
+    return SparkSummaryDescription(
+        key=key,
+        header=header,
+        icon=icon,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        entity_registry_enabled_default=enabled,
+        attrs_fn=attrs_fn,
+    )
+
+
+def _traffic_attrs(report: dict[str, Any]) -> dict[str, Any]:
+    attrs = _charts(
+        top_apps_by_bandwidth="topAppsByBandwidthChart",
+        top_sites_by_bandwidth="topSitesByBandwidthChart",
+        top_categories_by_bandwidth="topCategoriesByBandwidthChart",
+        top_users_by_bandwidth="topUsersByBandwidthChart",
+    )(report)
+    attrs["bandwidth_history"] = _history(report)
+    return attrs
+
+
+def _infected_attrs(report: dict[str, Any]) -> dict[str, Any]:
+    return _charts(
+        top_infected_hosts="topInfectedHostsChart",
+        infected_hosts="infectedHostsChart",
+        possibly_infected_hosts="possiblyInfectedHostsChart",
+    )(report)
+
+
+SUMMARY_SENSORS: tuple[SparkSummaryDescription, ...] = (
+    _bytes("traffic", "TOTAL_BYTES", "mdi:swap-vertical-bold", _traffic_attrs),
+    _bytes("download", "TOTAL_DOWN_BYTES", "mdi:download"),
+    _bytes("upload", "TOTAL_UP_BYTES", "mdi:upload"),
+    _count(
+        "sessions",
+        "TOTAL_APPS",
+        "mdi:lan-connect",
+        _charts(
+            top_apps_by_sessions="topAppsBySessionsChart",
+            top_sites_by_sessions="topSitesBySessionsChart",
+            top_categories_by_sessions="topCategoriesBySessionsChart",
+            top_users_by_sessions="topUsersBySessionsChart",
+        ),
+    ),
+    _count(
+        "high_risk_sessions",
+        "TOTAL_HIGH_RISK_APPS",
+        "mdi:alert-octagon",
+        _charts(
+            top_high_risk_apps="topHighRiskAppsBySessionsChart",
+            top_high_risk_users="topHighRiskUsersBySessionsChart",
+        ),
+    ),
+    _count(
+        "ips_events",
+        "TOTAL_PROTECTIONS",
+        "mdi:shield-alert",
+        _charts(top_protections="topProtectionsBySessionsChart"),
+    ),
+    _count(
+        "virus_incidents",
+        "TOTAL_AV_MALWARES",
+        "mdi:virus",
+        _charts(top_malwares="topMalwaresChart"),
+    ),
+    _count("bot_incidents", "TOTAL_AB_MALWARES", "mdi:robot-angry"),
+    _count("emulation_malware", "TOTAL_TE_MALWARES", "mdi:flask"),
+    _count("emulated_files", "TOTAL_TE_FILES_SCANNED_CLOUD", "mdi:file-search", enabled=False),
+    _count("infected_hosts", "TOTAL_INFECTED_HOSTS", "mdi:laptop-off", _infected_attrs),
+    _count("new_infected_hosts", "TOTAL_NEWLY_INFECTED_HOSTS", "mdi:laptop-off", enabled=False),
+    _count(
+        "critical_infected_hosts", "TOTAL_CRITICAL_INFECTED_HOSTS", "mdi:laptop-off", enabled=False
+    ),
+    _count("infected_servers", "TOTAL_INFECTED_SERVERS", "mdi:server-off", enabled=False),
+)
 
 
 class SparkEntity(CoordinatorEntity[SparkCoordinator]):
@@ -26,29 +245,132 @@ class SparkEntity(CoordinatorEntity[SparkCoordinator]):
         super().__init__(coordinator)
         entry = coordinator.config_entry
         self._attr_unique_id = f"{entry.unique_id}_{key}"
+        info = _report_info(coordinator)
+        mac = info.get("macAddress")
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.unique_id)},
+            connections={(CONNECTION_NETWORK_MAC, mac.lower())} if mac else set(),
             manufacturer="Check Point",
             model="Quantum Spark",
             name="Quantum Spark",
-            configuration_url=f"https://{entry.data['host']}:{entry.data['port']}",
+            sw_version=info.get("firmwareVersion"),
+            configuration_url=f"https://{entry.data['host']}",
         )
 
 
-class SparkReportTimestampSensor(SparkEntity, SensorEntity):
-    """When a report type was fetched last."""
+def _first_report(coordinator: SparkCoordinator) -> dict[str, Any]:
+    for report in (coordinator.data.reports if coordinator.data else {}).values():
+        if isinstance(report, dict):
+            return report
+    return {}
+
+
+def _report_info(coordinator: SparkCoordinator) -> dict[str, Any]:
+    info = _first_report(coordinator).get("reportInfo")
+    return info if isinstance(info, dict) else {}
+
+
+class SparkReportEntity(SparkEntity):
+    """Entity bound to one report type."""
+
+    def __init__(self, coordinator: SparkCoordinator, report_type: str, key: str) -> None:
+        super().__init__(coordinator, f"{report_type}_{key}")
+        self._report_type = report_type
+        self._attr_translation_key = f"{report_type}_{key}"
+
+    @property
+    def _report(self) -> dict[str, Any] | None:
+        report = self.coordinator.data.reports.get(self._report_type)
+        return report if isinstance(report, dict) else None
+
+    @property
+    def available(self) -> bool:
+        return super().available and self._report is not None
+
+
+class SparkSummarySensor(SparkReportEntity, SensorEntity):
+    """Key figure from a report summary."""
+
+    entity_description: SparkSummaryDescription
+    _unrecorded_attributes = LIST_ATTRIBUTES
+
+    def __init__(
+        self,
+        coordinator: SparkCoordinator,
+        report_type: str,
+        description: SparkSummaryDescription,
+    ) -> None:
+        super().__init__(coordinator, report_type, description.key)
+        self.entity_description = description
+
+    @property
+    def native_value(self) -> int | None:
+        return _summary(self._report or {}, self.entity_description.header)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        if not self.entity_description.attrs_fn or not self._report:
+            return None
+        return self.entity_description.attrs_fn(self._report)
+
+
+class SparkReportTimestampSensor(SparkReportEntity, SensorEntity):
+    """When the report of this type was generated on the gateway."""
 
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator: SparkCoordinator, report_type: str) -> None:
-        super().__init__(coordinator, f"{report_type}_report_time")
-        self._report_type = report_type
-        self._attr_translation_key = f"{report_type}_report_time"
+        super().__init__(coordinator, report_type, "report_time")
 
     @property
     def native_value(self) -> datetime | None:
+        info = (self._report or {}).get("reportInfo") or {}
+        if (ts := _int(info.get("timeStamp"))) is not None:
+            return dt_util.utc_from_timestamp(ts)
         return self.coordinator.data.fetched.get(self._report_type)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        status = (self._report or {}).get("reportStatus") or {}
+        attrs: dict[str, Any] = {}
+        if (start := _int(status.get("startDate"))) is not None:
+            attrs["period_start"] = dt_util.utc_from_timestamp(start).isoformat()
+        if status.get("status"):
+            attrs["status"] = str(status["status"]).removeprefix("REPORT_STATUS.").lower()
+        if fetched := self.coordinator.data.fetched.get(self._report_type):
+            attrs["fetched"] = fetched.isoformat()
+        return attrs
+
+
+class SparkBladesSensor(SparkEntity, SensorEntity):
+    """Number of enabled software blades; per-blade state as attribute."""
+
+    _attr_translation_key = "active_blades"
+    _attr_icon = "mdi:shield-check"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _unrecorded_attributes = LIST_ATTRIBUTES
+
+    def __init__(self, coordinator: SparkCoordinator) -> None:
+        super().__init__(coordinator, "active_blades")
+
+    def _blades(self) -> dict[str, bool]:
+        blades = _first_report(self.coordinator).get("bladesStatus")
+        out: dict[str, bool] = {}
+        for blade in blades if isinstance(blades, list) else []:
+            if isinstance(blade, dict) and blade.get("bladeCode"):
+                name = str(blade["bladeCode"]).removeprefix("BLADE.").lower()
+                out[name] = bool(_int(blade.get("enabled")))
+        return out
+
+    @property
+    def native_value(self) -> int | None:
+        blades = self._blades()
+        return sum(blades.values()) if blades else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"blades": self._blades()}
 
 
 async def async_setup_entry(
@@ -57,6 +379,14 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(
-        SparkReportTimestampSensor(coordinator, rt) for rt in coordinator.report_types
-    )
+    entities: list[SensorEntity] = [SparkBladesSensor(coordinator)]
+    for report_type in coordinator.report_types:
+        entities.append(SparkReportTimestampSensor(coordinator, report_type))
+        report = coordinator.data.reports.get(report_type) or {}
+        # Only create what this report type (and firmware) actually delivers.
+        entities.extend(
+            SparkSummarySensor(coordinator, report_type, description)
+            for description in SUMMARY_SENSORS
+            if _has_summary(report, description.header)
+        )
+    async_add_entities(entities)
