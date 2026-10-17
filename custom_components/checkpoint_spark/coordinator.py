@@ -35,6 +35,7 @@ from .const import (
     EVENT_THREAT,
 )
 from .report import _chart, _summary, blades_of
+from . import system as sysinfo
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,6 +43,15 @@ type SparkConfigEntry = ConfigEntry[SparkCoordinator]
 
 # A report counts as due slightly before its interval ends (poll jitter).
 _DUE_TOLERANCE = timedelta(seconds=60)
+
+# show command -> (parser, refresh interval); parsers keep whitelisted fields only
+_SHOW_COMMANDS = {
+    sysinfo.SHOW_DIAG: (lambda out, today: sysinfo.parse_diag(out), timedelta(0)),
+    sysinfo.SHOW_MEMORY: (lambda out, today: sysinfo.parse_memory(out), timedelta(0)),
+    sysinfo.SHOW_INTERNET: (lambda out, today: sysinfo.parse_internet(out), timedelta(0)),
+    sysinfo.SHOW_VPN: (lambda out, today: sysinfo.parse_vpn(out), timedelta(0)),
+    sysinfo.SHOW_LICENSE: (sysinfo.parse_license, timedelta(hours=6)),
+}
 
 
 @dataclass
@@ -51,6 +61,9 @@ class SparkData:
     reports: dict[str, Any] = field(default_factory=dict)
     fetched: dict[str, datetime] = field(default_factory=dict)
     login_info: dict[str, Any] = field(default_factory=dict)
+    # parsed (whitelisted) values from read-only clish "show" commands
+    system: dict[str, Any] = field(default_factory=dict)
+    system_fetched: dict[str, datetime] = field(default_factory=dict)
 
 
 def report_interval(options: dict[str, Any], report_type: str) -> int:
@@ -85,8 +98,9 @@ class SparkCoordinator(DataUpdateCoordinator[SparkData]):
         )
         # threat events: last time each (kind, name) was seen
         self._seen: dict[tuple[str, str], datetime] = {}
+        self._force = False
 
-    def _api(self) -> SparkApi:
+    def api(self) -> SparkApi:
         data = self.config_entry.data
         verify = data.get(CONF_VERIFY_SSL, False)
         return SparkApi(
@@ -96,7 +110,17 @@ class SparkCoordinator(DataUpdateCoordinator[SparkData]):
             verify,
         )
 
+    async def async_refresh_all(self) -> None:
+        """Fetch every selected report now, regardless of its interval."""
+        self._force = True
+        try:
+            await self.async_refresh()
+        finally:
+            self._force = False
+
     def _due(self, previous: SparkData, now: datetime) -> list[str]:
+        if self._force:
+            return list(self.report_types)
         return [
             rt
             for rt in self.report_types
@@ -113,11 +137,11 @@ class SparkCoordinator(DataUpdateCoordinator[SparkData]):
             reports={k: v for k, v in previous.reports.items() if k in self.report_types},
             fetched={k: v for k, v in previous.fetched.items() if k in self.report_types},
             login_info=previous.login_info,
+            system=dict(previous.system),
+            system_fetched=dict(previous.system_fetched),
         )
-        if not due:
-            return result
 
-        api = self._api()
+        api = self.api()
         errors: list[str] = []
         try:
             result.login_info = await api.login(data[CONF_USERNAME], data[CONF_PASSWORD])
@@ -130,6 +154,7 @@ class SparkCoordinator(DataUpdateCoordinator[SparkData]):
                 except SparkError as err:
                     _LOGGER.warning("Report %s failed: %s", report_type, err)
                     errors.append(f"{report_type}: {err}")
+            await self._fetch_system(api, result, now)
         except SparkAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except SparkError as err:
@@ -137,12 +162,35 @@ class SparkCoordinator(DataUpdateCoordinator[SparkData]):
         finally:
             await api.logout()
 
-        if errors and len(errors) == len(due) and not result.reports:
+        if due and errors and len(errors) == len(due) and not result.reports:
             raise UpdateFailed("; ".join(errors))
 
         self._fire_threat_events(previous, result, now)
         self._init_monitored_blades(result)
         return result
+
+    async def _fetch_system(self, api: SparkApi, result: SparkData, now: datetime) -> None:
+        """Read-only clish commands; a failing command only loses its own values."""
+        today = dt_util.as_local(now).date()
+        for command, (parser, interval) in _SHOW_COMMANDS.items():
+            last = result.system_fetched.get(command)
+            if last and interval and now - last < interval:
+                continue
+            try:
+                out = await api.run_show_command(command)
+            except SparkAuthError:
+                raise
+            except SparkError as err:
+                _LOGGER.debug("%s failed: %s", command, err)
+                continue
+            if not out or out.lstrip().startswith(("Bad parameter", "Incomplete command")):
+                _LOGGER.debug("%s not supported by this firmware", command)
+                continue
+            try:
+                result.system.update(parser(out, today))
+                result.system_fetched[command] = now
+            except (ValueError, KeyError, IndexError) as err:
+                _LOGGER.debug("Parsing %s failed: %s", command, err)
 
     # ------------------------------------------------------------ events --
     def _event_report_type(self, fetched_now: SparkData, previous: SparkData) -> str | None:

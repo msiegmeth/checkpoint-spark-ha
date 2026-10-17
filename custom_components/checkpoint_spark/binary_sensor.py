@@ -8,6 +8,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -84,12 +85,61 @@ class SparkBladeFailureSensor(SparkEntity, BinarySensorEntity):
         return {"monitored": self._monitored(), "disabled": self._missing() or []}
 
 
+class SparkInternetSensor(SparkEntity, BinarySensorEntity):
+    """Primary internet connection active (from 'show internet-connections')."""
+
+    _attr_translation_key = "internet"
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+
+    def __init__(self, coordinator) -> None:
+        super().__init__(coordinator, "internet")
+
+    def _conn(self) -> dict[str, Any]:
+        conns = self.coordinator.data.system.get("internet") or []
+        return conns[0] if conns else {}
+
+    @property
+    def is_on(self) -> bool | None:
+        return self._conn().get("active")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {k: self._conn().get(k) for k in ("name", "type", "interface", "link_status")}
+
+
+class SparkHardwareProblemSensor(SparkEntity, BinarySensorEntity):
+    """On when a voltage, temperature or eMMC check in 'show diag' is not OK."""
+
+    _attr_translation_key = "hardware_problem"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator) -> None:
+        super().__init__(coordinator, "hardware_problem")
+
+    @property
+    def is_on(self) -> bool | None:
+        ok = self.coordinator.data.system.get("hardware_ok")
+        return None if ok is None else not ok
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"problems": self.coordinator.data.system.get("hardware_problems") or []}
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: SparkConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(
-        [SparkThreatActiveSensor(coordinator), SparkBladeFailureSensor(coordinator)]
-    )
+    entities: list[BinarySensorEntity] = [
+        SparkThreatActiveSensor(coordinator),
+        SparkBladeFailureSensor(coordinator),
+    ]
+    system = coordinator.data.system
+    if system.get("internet"):
+        entities.append(SparkInternetSensor(coordinator))
+    if "hardware_ok" in system:
+        entities.append(SparkHardwareProblemSensor(coordinator))
+    async_add_entities(entities)

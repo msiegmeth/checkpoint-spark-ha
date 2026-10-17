@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -13,7 +13,12 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import EntityCategory, UnitOfInformation
+from homeassistant.const import (
+    PERCENTAGE,
+    EntityCategory,
+    UnitOfInformation,
+    UnitOfTemperature,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -177,6 +182,8 @@ class SparkEntity(CoordinatorEntity[SparkCoordinator]):
             model="Quantum Spark",
             name="Quantum Spark",
             sw_version=info.get("firmwareVersion"),
+            serial_number=(coordinator.data.system.get("serial_number") if coordinator.data else None),
+            hw_version=(coordinator.data.system.get("hw_version") if coordinator.data else None),
             configuration_url=f"https://{entry.data['host']}",
         )
 
@@ -297,6 +304,150 @@ class SparkBladesSensor(SparkEntity, SensorEntity):
         return {"blades": self._blades()}
 
 
+@dataclass(frozen=True, kw_only=True)
+class SparkSystemDescription(SensorEntityDescription):
+    """A value parsed from a read-only clish show command."""
+
+    value_fn: Callable[[dict[str, Any]], Any]
+    attrs_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None
+    exists_fn: Callable[[dict[str, Any]], bool] = lambda s: True
+
+
+def _primary_internet(system: dict[str, Any]) -> dict[str, Any]:
+    conns = system.get("internet") or []
+    return conns[0] if conns else {}
+
+
+def _connected_since(system: dict[str, Any]) -> datetime | None:
+    secs = _primary_internet(system).get("connected_seconds")
+    fetched = system.get("_fetched")
+    if secs is None or not fetched or not _primary_internet(system).get("active"):
+        return None
+    # round to the minute so the state does not change on every poll
+    since = fetched - timedelta(seconds=secs)
+    return since.replace(second=0, microsecond=0)
+
+
+def _expiry(system: dict[str, Any]) -> datetime | None:
+    value = system.get("next_contract_expiry")
+    if not value:
+        return None
+    return dt_util.start_of_local_day(date.fromisoformat(value))
+
+
+SYSTEM_SENSORS: tuple[SparkSystemDescription, ...] = (
+    SparkSystemDescription(
+        key="cpu_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        suggested_display_precision=0,
+        value_fn=lambda s: s.get("cpu_temperature"),
+        attrs_fn=lambda s: {"internal": s.get("cpu_temperature_internal")},
+        exists_fn=lambda s: "cpu_temperature" in s,
+    ),
+    SparkSystemDescription(
+        key="ddr_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        suggested_display_precision=0,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.get("ddr_temperature"),
+        exists_fn=lambda s: "ddr_temperature" in s,
+    ),
+    SparkSystemDescription(
+        key="memory_used",
+        icon="mdi:memory",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=0,
+        value_fn=lambda s: s.get("memory_used_mb"),
+        exists_fn=lambda s: "memory_used_mb" in s,
+    ),
+    SparkSystemDescription(
+        key="emmc_wear",
+        icon="mdi:harddisk",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.get("emmc_wear"),
+        exists_fn=lambda s: "emmc_wear" in s,
+    ),
+    SparkSystemDescription(
+        key="firmware",
+        icon="mdi:package-variant-closed",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: s.get("firmware"),
+        exists_fn=lambda s: "firmware" in s,
+    ),
+    SparkSystemDescription(
+        key="internet_connected_since",
+        icon="mdi:web-clock",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=_connected_since,
+        attrs_fn=lambda s: {
+            k: _primary_internet(s).get(k) for k in ("name", "type", "interface", "link_status")
+        },
+        exists_fn=lambda s: bool(s.get("internet")),
+    ),
+    SparkSystemDescription(
+        key="public_ipv4",
+        icon="mdi:ip-network",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda s: _primary_internet(s).get("ipv4_address"),
+        exists_fn=lambda s: bool(s.get("internet")),
+    ),
+    SparkSystemDescription(
+        key="vpn_tunnels_up",
+        icon="mdi:vpn",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda s: sum(t.get("state") == "up" for t in s.get("vpn_tunnels") or []),
+        attrs_fn=lambda s: {"tunnels": s.get("vpn_tunnels") or []},
+        exists_fn=lambda s: "vpn_tunnels" in s,
+    ),
+    SparkSystemDescription(
+        key="next_contract_expiry",
+        icon="mdi:license",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=_expiry,
+        attrs_fn=lambda s: {
+            "contracts": s.get("contracts") or [],
+            "expired_contracts": s.get("expired_contracts") or [],
+        },
+        exists_fn=lambda s: "contracts" in s,
+    ),
+)
+
+
+class SparkSystemSensor(SparkEntity, SensorEntity):
+    """Value from a read-only clish show command."""
+
+    entity_description: SparkSystemDescription
+    _unrecorded_attributes = frozenset({"contracts", "tunnels", "expired_contracts"})
+
+    def __init__(self, coordinator: SparkCoordinator, description: SparkSystemDescription) -> None:
+        super().__init__(coordinator, description.key)
+        self.entity_description = description
+        self._attr_translation_key = description.key
+
+    def _system(self) -> dict[str, Any]:
+        system = dict(self.coordinator.data.system)
+        system["_fetched"] = self.coordinator.data.system_fetched.get("show internet-connections")
+        return system
+
+    @property
+    def native_value(self) -> Any:
+        return self.entity_description.value_fn(self._system())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        if not self.entity_description.attrs_fn:
+            return None
+        return self.entity_description.attrs_fn(self._system())
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: SparkConfigEntry,
@@ -314,4 +465,8 @@ async def async_setup_entry(
             for description in SUMMARY_SENSORS
             if _has_summary(report, description.header)
         )
+    system = coordinator.data.system
+    entities.extend(
+        SparkSystemSensor(coordinator, d) for d in SYSTEM_SENSORS if d.exists_fn(system)
+    )
     async_add_entities(entities)

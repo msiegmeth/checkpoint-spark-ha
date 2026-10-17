@@ -85,6 +85,7 @@ Assistant asks you to re-authenticate.
 | Report types | `daily` | any of `hourly`, `daily`, `weekly`, `monthly` (at least one) |
 | Polling interval per report type | hourly 15, daily 30, weekly 180, monthly 360 min | 5 – 1440 min |
 | Monitored blades | blades enabled at first start | used by the *Blade failure* sensor |
+| Redact network data in diagnostics | off | replaces IPs/MACs, removes gateway name and host |
 
 Generating a report costs some CPU on the gateway. Keep the interval
 moderate, especially when several report types are selected.
@@ -113,6 +114,21 @@ contains (e.g. the hourly report has no IPS or high-risk figures).
 
 | Threat active (binary, problem) | – | `report_type`, `infected_hosts`, `infected_servers`, `critically_infected_hosts` |
 | Blade failure (binary, problem) | – | `monitored`, `disabled` |
+
+**Gateway health** (from read-only clish `show` commands, only created when the firmware supports them):
+
+| Entity | Unit | Attributes |
+|---|---|---|
+| CPU temperature / DDR temperature | °C | `internal` (CPU) |
+| Memory used | MB | – |
+| eMMC wear (diagnostic) | % | worst chip, upper bound of the reported range |
+| Firmware (diagnostic) | – | current image name |
+| Internet (binary, connectivity) | – | `name`, `type`, `interface`, `link_status` |
+| Internet connected since (timestamp) | – | same as above |
+| Public IPv4 (diagnostic) | – | – |
+| VPN tunnels up | – | `tunnels` |
+| Hardware problem (binary, problem, diagnostic) | – | `problems` |
+| Next contract expiry (timestamp) | – | `contracts` (SKU, expiry, expired), `expired_contracts` |
 
 The device shows the firmware version and MAC address from the report.
 
@@ -144,6 +160,16 @@ actions:
       message: "{{ trigger.event.data.name }} ({{ trigger.event.data.value }})"
 ```
 
+## Actions
+
+| Action | Data | Response |
+|---|---|---|
+| `checkpoint_spark.refresh` | – | fetches all selected reports now |
+| `checkpoint_spark.get_report` | `report_type` | `{report_type, fetched, report}` (decoded report) |
+| `checkpoint_spark.show_command` | `command` (must start with `show`) | `{command, output}` |
+
+All actions accept an optional `config_entry_id` when several gateways are configured.
+
 ## Dashboard
 
 An example dashboard using only standard cards is in
@@ -152,9 +178,10 @@ An example dashboard using only standard cards is in
 ## Diagnostics
 
 **Settings → Devices & services → Check Point Quantum Spark → ⋮ → Download
-diagnostics** returns the decoded reports. Username and password are
-redacted, but the reports contain internal IP addresses and host names –
-review before sharing.
+diagnostics** returns the decoded reports and the parsed gateway values.
+Username, password, serial number and public IP are always redacted. The
+reports still contain internal IP addresses and host names – enable the option
+*Redact network data in diagnostics* before sharing them publicly.
 
 ## Troubleshooting
 
@@ -173,6 +200,9 @@ logger:
 | Report failed | The administrator role may not be allowed to generate reports |
 
 ## Development
+
+Tests: `pip install -r requirements_test.txt && pytest`.
+
 
 See [docs/development.md](docs/development.md). The API calls used are
 documented in [docs/api.md](docs/api.md).

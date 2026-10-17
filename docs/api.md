@@ -11,6 +11,12 @@ Base URL: `https://<host>:4434/web-api/<command>`, always `POST` with
 | `run-clish-command` | `{"script": "<base64 clish>"}` | `output`: base64. **Only `show …` commands are used** |
 | `logout` | none | – |
 
+Clish commands used (all read-only): `show diag`, `show memory-usage`,
+`show internet-connections`, `show vpn tunnels`, `show license` – plus whatever
+`show …` command a user runs through the `show_command` action.
+Their raw output contains secrets (PPPoE password and hash, setup Wi-Fi
+password); `system.py` keeps whitelisted fields only.
+
 Nothing else is called. The client (`custom_components/checkpoint_spark/api.py`)
 refuses clish commands that do not start with `show`.
 

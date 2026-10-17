@@ -33,6 +33,9 @@ HACS-kompatibel: `custom_components/checkpoint_spark/` im Root, `docs/`,
 
 ## Regeln
 - Am Gateway NUR `login`, `logout`, `generate-report` und Clish `show …`. Nie Config ändern.
+- `show`-Ausgaben enthalten Geheimnisse (PPPoE-Passwort/-Hash, Setup-WLAN-Passwort): nur Whitelist-Felder
+  übernehmen (`system.py`), Rohausgaben nie speichern, loggen oder committen.
+- Tests: `tests/` (pytest-homeassistant-custom-component), laufen in GitHub Actions; erst taggen, wenn grün.
 - Keine Zugangsdaten, Session-IDs oder ungeschwärzten Reportdaten committen.
   `docs/report-sample.json` nur anonymisiert (IPs, Hostnamen, Benutzer).
 - Keine externen Requirements; aiohttp aus HA. Aktuelle HA-Konventionen

@@ -4,6 +4,31 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-10-18
+
+### New
+- **Gateway health and connectivity** (read-only clish `show` commands):
+  CPU and DDR temperature, memory used, eMMC wear, firmware image,
+  *Internet* connectivity sensor, *Internet connected since*, public IPv4,
+  active VPN tunnels, *Hardware problem* (any voltage / temperature / eMMC
+  check not OK) and *Next contract expiry* with the list of expired contracts.
+  Serial number and hardware version now show on the device page.
+  Only whitelisted fields are kept – the raw outputs contain secrets
+  (PPPoE password, setup Wi-Fi password) and are never stored.
+- **Actions**
+  - `checkpoint_spark.refresh` – fetch all reports now
+  - `checkpoint_spark.get_report` – return the last decoded report (for scripts)
+  - `checkpoint_spark.show_command` – run a read-only `show …` command and
+    return its output (anything else is refused)
+- **Option "Redact network data in diagnostics"** – replaces IP and MAC
+  addresses and removes gateway name and host, so diagnostics can be shared
+  in a public issue. Serial number and public IP are always redacted.
+- Automated tests (parsers, report handling, config flow) run on every push.
+
+### Upgrade notes
+- Each poll now also runs a few `show` commands (license only every 6 h).
+  A read-only administrator is sufficient.
+
 ## [0.2.0] - 2026-10-18
 
 ### New

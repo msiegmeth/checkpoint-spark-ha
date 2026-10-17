@@ -27,6 +27,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import SparkApi, SparkAuthError, SparkError
 from .const import (
     CONF_MONITORED_BLADES,
+    CONF_REDACT_DIAGNOSTICS,
     CONF_REPORT_TYPES,
     CONF_SCAN_INTERVAL_MIN,
     DEFAULT_PORT,
@@ -217,6 +218,12 @@ class SparkOptionsFlow(OptionsFlowWithReload):
                     )
                 )
             )
+        fields[
+            vol.Optional(
+                CONF_REDACT_DIAGNOSTICS,
+                default=options.get(CONF_REDACT_DIAGNOSTICS, False),
+            )
+        ] = bool
         return self.async_show_form(
             step_id="init", data_schema=vol.Schema(fields), errors=errors
         )

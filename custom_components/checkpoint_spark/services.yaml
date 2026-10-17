@@ -1,0 +1,29 @@
+refresh:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: checkpoint_spark
+get_report:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: checkpoint_spark
+    report_type:
+      required: true
+      selector:
+        select:
+          options: [hourly, daily, weekly, monthly]
+          translation_key: report_type
+show_command:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: checkpoint_spark
+    command:
+      required: true
+      example: show diag
+      selector:
+        text:

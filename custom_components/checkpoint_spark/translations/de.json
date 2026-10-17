@@ -41,11 +41,13 @@
           "scan_interval_daily": "Abfrageintervall Tages-Report",
           "scan_interval_weekly": "Abfrageintervall Wochen-Report",
           "scan_interval_monthly": "Abfrageintervall Monats-Report",
-          "monitored_blades": "Überwachte Blades"
+          "monitored_blades": "Überwachte Blades",
+          "redact_diagnostics": "Netzwerkdaten in Diagnosen schwärzen"
         },
         "description": "Jeder Report-Typ wird in seinem eigenen Intervall abgerufen. Reports kosten Rechenzeit am Gateway – lange Zeiträume (Woche, Monat) besser im Stundenbereich.",
         "data_description": {
-          "monitored_blades": "Der Sensor „Blade ausgefallen“ geht an, wenn eines dieser Blades nicht aktiv ist."
+          "monitored_blades": "Der Sensor „Blade ausgefallen“ geht an, wenn eines dieser Blades nicht aktiv ist.",
+          "redact_diagnostics": "Ersetzt IP- und MAC-Adressen und entfernt Gateway-Name und Host – dann lassen sich Diagnosen gefahrlos in einem öffentlichen Issue teilen."
         }
       }
     },
@@ -263,6 +265,33 @@
       },
       "active_blades": {
         "name": "Aktive Blades"
+      },
+      "cpu_temperature": {
+        "name": "CPU-Temperatur"
+      },
+      "ddr_temperature": {
+        "name": "DDR-Temperatur"
+      },
+      "memory_used": {
+        "name": "Arbeitsspeicher belegt"
+      },
+      "emmc_wear": {
+        "name": "eMMC-Verschleiß"
+      },
+      "firmware": {
+        "name": "Firmware"
+      },
+      "internet_connected_since": {
+        "name": "Internet verbunden seit"
+      },
+      "public_ipv4": {
+        "name": "Öffentliche IPv4"
+      },
+      "vpn_tunnels_up": {
+        "name": "VPN-Tunnel aktiv"
+      },
+      "next_contract_expiry": {
+        "name": "Nächster Vertragsablauf"
       }
     },
     "binary_sensor": {
@@ -271,7 +300,64 @@
       },
       "blade_failure": {
         "name": "Blade ausgefallen"
+      },
+      "internet": {
+        "name": "Internet"
+      },
+      "hardware_problem": {
+        "name": "Hardware-Problem"
       }
+    }
+  },
+  "services": {
+    "refresh": {
+      "name": "Reports abrufen",
+      "description": "Alle gewählten Reports sofort abrufen, unabhängig vom Intervall.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Nur bei mehreren Gateways nötig."
+        }
+      }
+    },
+    "get_report": {
+      "name": "Report ausgeben",
+      "description": "Gibt den zuletzt abgerufenen, dekodierten Report eines Typs zurück (für Scripts).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Nur bei mehreren Gateways nötig."
+        },
+        "report_type": {
+          "name": "Report-Typ",
+          "description": "stündlich, täglich, wöchentlich oder monatlich"
+        }
+      }
+    },
+    "show_command": {
+      "name": "Show-Befehl ausführen",
+      "description": "Führt einen lesenden Clish-Befehl aus (muss mit „show“ beginnen) und gibt die Ausgabe zurück.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Nur bei mehreren Gateways nötig."
+        },
+        "command": {
+          "name": "Befehl",
+          "description": "z. B. show diag"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "entry_not_found": {
+      "message": "Kein (eindeutiger) geladener Quantum-Spark-Eintrag – config_entry_id angeben."
+    },
+    "report_not_loaded": {
+      "message": "Report {report_type} ist nicht geladen (in den Optionen nicht gewählt?)."
+    },
+    "only_show": {
+      "message": "Nur Clish-Befehle, die mit „show“ beginnen, sind erlaubt."
     }
   }
 }

@@ -22,6 +22,7 @@ MIN_SCAN_INTERVAL_MIN: Final = 5
 MAX_SCAN_INTERVAL_MIN: Final = 1440
 
 CONF_MONITORED_BLADES: Final = "monitored_blades"
+CONF_REDACT_DIAGNOSTICS: Final = "redact_diagnostics"
 
 EVENT_THREAT: Final = f"{DOMAIN}_threat"
 # Same threat is reported at most once per this many hours

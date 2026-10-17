@@ -41,11 +41,13 @@
           "scan_interval_daily": "Polling interval daily report",
           "scan_interval_weekly": "Polling interval weekly report",
           "scan_interval_monthly": "Polling interval monthly report",
-          "monitored_blades": "Monitored blades"
+          "monitored_blades": "Monitored blades",
+          "redact_diagnostics": "Redact network data in diagnostics"
         },
         "description": "Each report type is fetched at its own interval. Generating reports costs CPU on the gateway – keep long periods (weekly, monthly) at hours.",
         "data_description": {
-          "monitored_blades": "The 'Blade failure' sensor turns on when one of these blades is not enabled."
+          "monitored_blades": "The 'Blade failure' sensor turns on when one of these blades is not enabled.",
+          "redact_diagnostics": "Replaces IP and MAC addresses and removes gateway name and host, so diagnostics can be shared in a public issue."
         }
       }
     },
@@ -263,6 +265,33 @@
       },
       "active_blades": {
         "name": "Active blades"
+      },
+      "cpu_temperature": {
+        "name": "CPU temperature"
+      },
+      "ddr_temperature": {
+        "name": "DDR temperature"
+      },
+      "memory_used": {
+        "name": "Memory used"
+      },
+      "emmc_wear": {
+        "name": "eMMC wear"
+      },
+      "firmware": {
+        "name": "Firmware"
+      },
+      "internet_connected_since": {
+        "name": "Internet connected since"
+      },
+      "public_ipv4": {
+        "name": "Public IPv4"
+      },
+      "vpn_tunnels_up": {
+        "name": "VPN tunnels up"
+      },
+      "next_contract_expiry": {
+        "name": "Next contract expiry"
       }
     },
     "binary_sensor": {
@@ -271,7 +300,64 @@
       },
       "blade_failure": {
         "name": "Blade failure"
+      },
+      "internet": {
+        "name": "Internet"
+      },
+      "hardware_problem": {
+        "name": "Hardware problem"
       }
+    }
+  },
+  "services": {
+    "refresh": {
+      "name": "Refresh reports",
+      "description": "Fetch all selected reports now, regardless of their interval.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Only needed with several gateways."
+        }
+      }
+    },
+    "get_report": {
+      "name": "Get report",
+      "description": "Returns the last decoded report of a type (for scripts).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Only needed with several gateways."
+        },
+        "report_type": {
+          "name": "Report type",
+          "description": "hourly, daily, weekly or monthly"
+        }
+      }
+    },
+    "show_command": {
+      "name": "Run show command",
+      "description": "Runs a read-only clish command (must start with 'show') and returns its output.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Only needed with several gateways."
+        },
+        "command": {
+          "name": "Command",
+          "description": "e.g. show diag"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "entry_not_found": {
+      "message": "No (unique) loaded Quantum Spark entry found – pass config_entry_id."
+    },
+    "report_not_loaded": {
+      "message": "Report {report_type} is not loaded (not selected in the options?)."
+    },
+    "only_show": {
+      "message": "Only clish commands starting with 'show' are allowed."
     }
   }
 }
