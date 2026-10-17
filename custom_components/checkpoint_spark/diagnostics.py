@@ -56,6 +56,8 @@ async def async_get_config_entry_diagnostics(
             "port": rx.port,
             "received": rx.received,
             "dropped": rx.dropped,
+            "products": dict(rx.product_counts),
             "messages": list(rx.messages)[-20:],
+            "by_product": {p: list(m)[-10:] for p, m in rx.by_product.items()},
         }
     return _anonymise(result) if network else result

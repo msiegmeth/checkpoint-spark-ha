@@ -365,6 +365,10 @@
         "limit": {
           "name": "Limit",
           "description": "Anzahl Meldungen (1–200)"
+        },
+        "product": {
+          "name": "Produkt",
+          "description": "Nur Meldungen dieses Produkts (ProductName), z. B. Anti-Virus, IPS, Firewall"
         }
       }
     }

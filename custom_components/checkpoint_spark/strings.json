@@ -365,6 +365,10 @@
         "limit": {
           "name": "Limit",
           "description": "Number of messages (1–200)"
+        },
+        "product": {
+          "name": "Product",
+          "description": "Only messages of this product (ProductName), e.g. Anti-Virus, IPS, Firewall"
         }
       }
     }

@@ -483,6 +483,7 @@ class SparkSyslogSensor(SparkEntity, SensorEntity):
         return {
             "port": rx.port,
             "dropped": rx.dropped,
+            "products": dict(rx.product_counts),
             "last_received": rx.last_received.isoformat() if rx.last_received else None,
         }
 

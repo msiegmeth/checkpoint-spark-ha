@@ -90,10 +90,13 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 translation_domain=DOMAIN, translation_key="syslog_disabled"
             )
         limit = call.data["limit"]
+        product = call.data.get("product")
+        source = rx.by_product.get(product, []) if product else rx.messages
         return {
             "received": rx.received,
             "dropped": rx.dropped,
-            "messages": list(reversed(rx.messages))[:limit],
+            "products": dict(rx.product_counts),
+            "messages": list(reversed(source))[:limit],
         }
 
     hass.services.async_register(DOMAIN, "refresh", refresh, schema=vol.Schema(_ENTRY))
@@ -101,7 +104,8 @@ def async_setup_services(hass: HomeAssistant) -> None:
         DOMAIN,
         "syslog_messages",
         syslog_messages,
-        schema=vol.Schema({**_ENTRY, vol.Optional("limit", default=50): vol.All(int, vol.Range(1, 200))}),
+        schema=vol.Schema({**_ENTRY, vol.Optional("limit", default=50): vol.All(int, vol.Range(1, 200)),
+            vol.Optional("product"): cv.string}),
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(

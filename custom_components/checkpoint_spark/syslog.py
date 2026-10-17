@@ -21,6 +21,9 @@ from homeassistant.util import dt as dt_util
 _LOGGER = logging.getLogger(__name__)
 
 BUFFER_SIZE = 200
+# per product (Firewall, Anti-Virus, IPS, …) so rare security events are not
+# pushed out by frequent firewall drops
+PRODUCT_BUFFER_SIZE = 50
 
 # <PRI>, optional RFC 5424 version, then the rest
 _PRI = re.compile(r"^<(\d{1,3})>(\d\s)?")
@@ -69,6 +72,8 @@ class SyslogReceiver:
         self._allowed: set[str] = set()
         self._transport: asyncio.DatagramTransport | None = None
         self.messages: deque[dict[str, Any]] = deque(maxlen=BUFFER_SIZE)
+        self.by_product: dict[str, deque[dict[str, Any]]] = {}
+        self.product_counts: dict[str, int] = {}
         self.received = 0
         self.dropped = 0
         self.last_received: datetime | None = None
@@ -110,6 +115,9 @@ class SyslogReceiver:
         msg = parse_message(text)
         msg["received"] = dt_util.utcnow().isoformat()
         self.messages.append(msg)
+        product = (msg.get("fields") or {}).get("ProductName") or "unknown"
+        self.by_product.setdefault(product, deque(maxlen=PRODUCT_BUFFER_SIZE)).append(msg)
+        self.product_counts[product] = self.product_counts.get(product, 0) + 1
         self.received += 1
         self.last_received = dt_util.utcnow()
         self._notify()
