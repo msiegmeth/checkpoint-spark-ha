@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 
 from .coordinator import SparkConfigEntry, SparkCoordinator
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: SparkConfigEntry) -> bool:

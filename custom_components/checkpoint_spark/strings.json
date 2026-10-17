@@ -37,7 +37,15 @@
         "title": "Options",
         "data": {
           "report_types": "Report types",
-          "scan_interval": "Polling interval"
+          "scan_interval_hourly": "Polling interval hourly report",
+          "scan_interval_daily": "Polling interval daily report",
+          "scan_interval_weekly": "Polling interval weekly report",
+          "scan_interval_monthly": "Polling interval monthly report",
+          "monitored_blades": "Monitored blades"
+        },
+        "description": "Each report type is fetched at its own interval. Generating reports costs CPU on the gateway – keep long periods (weekly, monthly) at hours.",
+        "data_description": {
+          "monitored_blades": "The 'Blade failure' sensor turns on when one of these blades is not enabled."
         }
       }
     },
@@ -52,6 +60,22 @@
         "daily": "Daily",
         "weekly": "Weekly",
         "monthly": "Monthly"
+      }
+    },
+    "blade": {
+      "options": {
+        "fw": "Firewall",
+        "vpn_remote_access": "Remote Access VPN",
+        "vpn_site_to_site": "Site-to-Site VPN",
+        "ips": "IPS",
+        "anti_virus": "Anti-Virus",
+        "url_filtering": "URL Filtering",
+        "anti_spam": "Anti-Spam",
+        "qos": "QoS",
+        "identity_awareness": "Identity Awareness",
+        "application_control": "Application Control",
+        "anti_bot": "Anti-Bot",
+        "threat_emulation": "Threat Emulation"
       }
     }
   },
@@ -239,6 +263,14 @@
       },
       "active_blades": {
         "name": "Active blades"
+      }
+    },
+    "binary_sensor": {
+      "threat_active": {
+        "name": "Threat active"
+      },
+      "blade_failure": {
+        "name": "Blade failure"
       }
     }
   }

@@ -37,7 +37,15 @@
         "title": "Optionen",
         "data": {
           "report_types": "Report-Typen",
-          "scan_interval": "Abfrageintervall"
+          "scan_interval_hourly": "Abfrageintervall Stunden-Report",
+          "scan_interval_daily": "Abfrageintervall Tages-Report",
+          "scan_interval_weekly": "Abfrageintervall Wochen-Report",
+          "scan_interval_monthly": "Abfrageintervall Monats-Report",
+          "monitored_blades": "Überwachte Blades"
+        },
+        "description": "Jeder Report-Typ wird in seinem eigenen Intervall abgerufen. Reports kosten Rechenzeit am Gateway – lange Zeiträume (Woche, Monat) besser im Stundenbereich.",
+        "data_description": {
+          "monitored_blades": "Der Sensor „Blade ausgefallen“ geht an, wenn eines dieser Blades nicht aktiv ist."
         }
       }
     },
@@ -52,6 +60,22 @@
         "daily": "Täglich",
         "weekly": "Wöchentlich",
         "monthly": "Monatlich"
+      }
+    },
+    "blade": {
+      "options": {
+        "fw": "Firewall",
+        "vpn_remote_access": "Remote-Access-VPN",
+        "vpn_site_to_site": "Site-to-Site-VPN",
+        "ips": "IPS",
+        "anti_virus": "Anti-Virus",
+        "url_filtering": "URL-Filter",
+        "anti_spam": "Anti-Spam",
+        "qos": "QoS",
+        "identity_awareness": "Identity Awareness",
+        "application_control": "Application Control",
+        "anti_bot": "Anti-Bot",
+        "threat_emulation": "Threat Emulation"
       }
     }
   },
@@ -239,6 +263,14 @@
       },
       "active_blades": {
         "name": "Aktive Blades"
+      }
+    },
+    "binary_sensor": {
+      "threat_active": {
+        "name": "Bedrohung aktiv"
+      },
+      "blade_failure": {
+        "name": "Blade ausgefallen"
       }
     }
   }

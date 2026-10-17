@@ -26,18 +26,19 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import SparkApi, SparkAuthError, SparkError
 from .const import (
+    CONF_MONITORED_BLADES,
     CONF_REPORT_TYPES,
     CONF_SCAN_INTERVAL_MIN,
     DEFAULT_PORT,
     DEFAULT_REPORT_TYPES,
-    DEFAULT_SCAN_INTERVAL_MIN,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
     MAX_SCAN_INTERVAL_MIN,
     MIN_SCAN_INTERVAL_MIN,
     REPORT_TYPES,
 )
-from .coordinator import SparkConfigEntry
+from .coordinator import SparkConfigEntry, report_interval
+from .report import blades_of
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -104,10 +105,7 @@ class SparkConfigFlow(ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(
                     title=f"Quantum Spark ({user_input[CONF_HOST]})",
                     data=user_input,
-                    options={
-                        CONF_REPORT_TYPES: DEFAULT_REPORT_TYPES,
-                        CONF_SCAN_INTERVAL_MIN: DEFAULT_SCAN_INTERVAL_MIN,
-                    },
+                    options={CONF_REPORT_TYPES: DEFAULT_REPORT_TYPES},
                 )
             errors["base"] = error
         return self.async_show_form(
@@ -156,7 +154,7 @@ class SparkConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class SparkOptionsFlow(OptionsFlowWithReload):
-    """Report types and polling interval; changes reload the entry."""
+    """Report types, polling interval per type, monitored blades; changes reload the entry."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -166,39 +164,59 @@ class SparkOptionsFlow(OptionsFlowWithReload):
             if not user_input.get(CONF_REPORT_TYPES):
                 errors[CONF_REPORT_TYPES] = "no_report_type"
             else:
-                user_input[CONF_SCAN_INTERVAL_MIN] = int(
-                    user_input[CONF_SCAN_INTERVAL_MIN]
-                )
+                for rt in REPORT_TYPES:
+                    key = f"{CONF_SCAN_INTERVAL_MIN}_{rt}"
+                    if key in user_input:
+                        user_input[key] = int(user_input[key])
                 return self.async_create_entry(data=user_input)
 
-        options = self.config_entry.options
-        schema = vol.Schema(
-            {
+        options = dict(self.config_entry.options)
+        fields: dict[Any, Any] = {
+            vol.Required(
+                CONF_REPORT_TYPES,
+                default=options.get(CONF_REPORT_TYPES, DEFAULT_REPORT_TYPES),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=REPORT_TYPES,
+                    multiple=True,
+                    mode=selector.SelectSelectorMode.LIST,
+                    translation_key="report_type",
+                )
+            ),
+        }
+        for rt in REPORT_TYPES:
+            fields[
                 vol.Required(
-                    CONF_REPORT_TYPES,
-                    default=options.get(CONF_REPORT_TYPES, DEFAULT_REPORT_TYPES),
-                ): selector.SelectSelector(
+                    f"{CONF_SCAN_INTERVAL_MIN}_{rt}", default=report_interval(options, rt)
+                )
+            ] = selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=MIN_SCAN_INTERVAL_MIN,
+                    max=MAX_SCAN_INTERVAL_MIN,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="min",
+                )
+            )
+        monitored = list(options.get(CONF_MONITORED_BLADES, []))
+        known = set(monitored)
+        coordinator = getattr(self.config_entry, "runtime_data", None)
+        if coordinator and coordinator.data:
+            for report in coordinator.data.reports.values():
+                if isinstance(report, dict):
+                    known |= set(blades_of(report))
+                    break
+        if known:
+            fields[vol.Optional(CONF_MONITORED_BLADES, default=monitored)] = (
+                selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=REPORT_TYPES,
+                        options=sorted(known),
                         multiple=True,
                         mode=selector.SelectSelectorMode.LIST,
-                        translation_key="report_type",
+                        translation_key="blade",
                     )
-                ),
-                vol.Required(
-                    CONF_SCAN_INTERVAL_MIN,
-                    default=options.get(
-                        CONF_SCAN_INTERVAL_MIN, DEFAULT_SCAN_INTERVAL_MIN
-                    ),
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=MIN_SCAN_INTERVAL_MIN,
-                        max=MAX_SCAN_INTERVAL_MIN,
-                        step=1,
-                        mode=selector.NumberSelectorMode.BOX,
-                        unit_of_measurement="min",
-                    )
-                ),
-            }
+                )
+            )
+        return self.async_show_form(
+            step_id="init", data_schema=vol.Schema(fields), errors=errors
         )
-        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)

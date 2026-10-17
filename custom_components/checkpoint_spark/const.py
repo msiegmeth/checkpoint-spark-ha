@@ -16,7 +16,17 @@ REPORT_TYPES: Final = ["hourly", "daily", "weekly", "monthly"]
 DEFAULT_REPORT_TYPES: Final = ["daily"]
 
 DEFAULT_SCAN_INTERVAL_MIN: Final = 15
+# Polling interval per report type (minutes); option key f"{CONF_SCAN_INTERVAL_MIN}_{type}"
+DEFAULT_INTERVALS: Final = {"hourly": 15, "daily": 30, "weekly": 180, "monthly": 360}
 MIN_SCAN_INTERVAL_MIN: Final = 5
 MAX_SCAN_INTERVAL_MIN: Final = 1440
+
+CONF_MONITORED_BLADES: Final = "monitored_blades"
+
+EVENT_THREAT: Final = f"{DOMAIN}_threat"
+# Same threat is reported at most once per this many hours
+EVENT_DEDUP_HOURS: Final = 24
+# Report types used for threat events, most current first
+EVENT_REPORT_ORDER: Final = ["hourly", "daily", "weekly", "monthly"]
 
 REQUEST_TIMEOUT: Final = 60

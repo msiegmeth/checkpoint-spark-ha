@@ -27,8 +27,9 @@ HACS-kompatibel: `custom_components/checkpoint_spark/` im Root, `docs/`,
   HA-Config-Repo gitignored.
 - Python-Änderung → HA-Neustart (ankündigen). Report-Struktur über Diagnostics
   (`/api/diagnostics/config_entry/<id>`) ansehen.
-- Release: `manifest.json`-Version + CHANGELOG, Tag `vX.Y.Z`, push → GitHub-Action
-  erstellt Release → HACS bietet Update an.
+- Release: `manifest.json`-Version + **lesbarer** CHANGELOG-Abschnitt (Neu/Geändert/Behoben/
+  Hinweise zum Update, für Nutzer geschrieben – User-Vorgabe), Tag `vX.Y.Z`, push → GitHub-Action
+  nimmt den Abschnitt als Release-Text (= Anzeige in HACS) → HACS bietet Update an.
 
 ## Regeln
 - Am Gateway NUR `login`, `logout`, `generate-report` und Clish `show …`. Nie Config ändern.

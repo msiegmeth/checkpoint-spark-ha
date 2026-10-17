@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag whose release notes should be (re)written from CHANGELOG.md, e.g. v0.1.1"
+        required: true
 
 permissions:
   contents: write
@@ -11,13 +16,24 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
       - name: Check manifest version matches tag
         run: |
-          tag="${GITHUB_REF_NAME#v}"
           ver=$(python3 -c 'import json;print(json.load(open("custom_components/checkpoint_spark/manifest.json"))["version"])')
-          [ "$tag" = "$ver" ] || { echo "Tag $tag != manifest $ver"; exit 1; }
+          [ "${TAG#v}" = "$ver" ] || { echo "Tag $TAG != manifest $ver"; exit 1; }
+      - name: Release notes from CHANGELOG.md
+        run: |
+          ver="${TAG#v}"
+          awk -v v="$ver" 'index($0, "## [" v "]") == 1 {f=1; next} f && /^## \[/ {exit} f' CHANGELOG.md > notes.md
+          [ -s notes.md ] || { echo "No CHANGELOG.md section for $ver"; exit 1; }
+          cat notes.md
       - uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          tag_name: ${{ env.TAG }}
+          name: ${{ env.TAG }}
+          body_path: notes.md

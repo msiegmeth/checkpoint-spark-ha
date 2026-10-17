@@ -33,11 +33,14 @@ the decoded reports of your gateway.
 ## Releases
 
 1. Bump `version` in `custom_components/checkpoint_spark/manifest.json`
-2. Add an entry to `CHANGELOG.md`
+2. Add a **readable** section `## [X.Y.Z] - date` to `CHANGELOG.md`
+   (New / Changed / Fixed / Upgrade notes, written for users, not commit logs)
 3. Commit, tag `vX.Y.Z`, push the tag
 
-The `release` workflow creates a GitHub release from the tag; HACS then
-offers it as an update.
+The `release` workflow fails without a CHANGELOG section for the version.
+It creates the GitHub release with that section as release notes – this is
+the text HACS shows in the update dialog. To rewrite the notes of an
+existing release: Actions → Release → *Run workflow* with the tag.
 
 ## Rules
 

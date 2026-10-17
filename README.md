@@ -83,7 +83,8 @@ Assistant asks you to re-authenticate.
 | Option | Default | Range |
 |---|---|---|
 | Report types | `daily` | any of `hourly`, `daily`, `weekly`, `monthly` (at least one) |
-| Polling interval | 15 min | 5 – 1440 min |
+| Polling interval per report type | hourly 15, daily 30, weekly 180, monthly 360 min | 5 – 1440 min |
+| Monitored blades | blades enabled at first start | used by the *Blade failure* sensor |
 
 Generating a report costs some CPU on the gateway. Keep the interval
 moderate, especially when several report types are selected.
@@ -110,7 +111,38 @@ contains (e.g. the hourly report has no IPS or high-risk figures).
 | `<type>` report (timestamp, diagnostic) | – | `period_start`, `status`, `fetched` |
 | Active blades (diagnostic) | – | `blades` (enabled state per software blade) |
 
+| Threat active (binary, problem) | – | `report_type`, `infected_hosts`, `infected_servers`, `critically_infected_hosts` |
+| Blade failure (binary, problem) | – | `monitored`, `disabled` |
+
 The device shows the firmware version and MAC address from the report.
+
+## Threat events
+
+The event `checkpoint_spark_threat` is fired when the most current selected
+report (hourly → daily → weekly → monthly) contains something new compared
+to the previous poll. Event data:
+
+| Field | Content |
+|---|---|
+| `kind` | `malware`, `host`, `critical_protection`, `infected_hosts`, `infected_servers`, `critically_infected_hosts` |
+| `name` | malware / protection name or host IP (for counters: the summary key) |
+| `value` | incidents, hits or new counter value (`previous` = old value for counters) |
+| `severity`, `cve` | when the report provides them |
+| `report_type`, `entry_id` | source |
+
+The first poll after a restart only sets the baseline; the same item is
+reported at most once per 24 hours.
+
+```yaml
+triggers:
+  - trigger: event
+    event_type: checkpoint_spark_threat
+actions:
+  - action: notify.notify
+    data:
+      title: "Firewall: {{ trigger.event.data.kind }}"
+      message: "{{ trigger.event.data.name }} ({{ trigger.event.data.value }})"
+```
 
 ## Dashboard
 

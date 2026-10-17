@@ -4,6 +4,29 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-10-18
+
+### New
+- **Threat alerts as events.** The integration now fires the event
+  `checkpoint_spark_threat` when something new shows up in the most current
+  report: a new malware, a new host with malware incidents, a new *critical*
+  IPS protection hit, or a rising number of infected hosts / servers.
+  Use it as an automation trigger, e.g. for a push notification.
+  The first poll after a restart only sets the baseline, and the same threat is
+  reported at most once per 24 hours.
+- **Binary sensor "Threat active"** – on while infected hosts, infected servers
+  or critically infected hosts are reported.
+- **Binary sensor "Blade failure"** – on when one of the monitored software
+  blades is not enabled. Pick the blades in the options; on first start the
+  currently enabled blades are monitored.
+- **Polling interval per report type.** Defaults: hourly 15 min, daily 30 min,
+  weekly 3 h, monthly 6 h. This takes load off the gateway.
+
+### Upgrade notes
+- The single polling interval option is replaced by one interval per report
+  type. Existing settings are taken over (never shorter than the new default).
+- Release notes in HACS now come from this changelog.
+
 ## [0.1.1] - 2026-10-17
 
 ### Changed
