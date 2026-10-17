@@ -21,6 +21,8 @@ Assistant bereitstellt.
 - Firmware R81.10.x oder R82.00.x
 - REST API am Gateway aktiv (`set rest-api mode on` in Clish)
 - Eigener Administrator, idealerweise mit Rolle **Read-only**
+- **2FA für Administratoren aus** – die REST API kann keinen zweiten Faktor
+  (siehe [Gateway-Setup](docs/gateway-setup.md#3-two-factor-authentication-2fa))
 - Home Assistant 2025.8 oder neuer
 
 Einrichtung am Gateway: [docs/gateway-setup.md](docs/gateway-setup.md)
@@ -75,6 +77,15 @@ fordert Home Assistant zur erneuten Anmeldung auf.
 |---|---|---|
 | Report-Typen | `daily` | `hourly`, `daily`, `weekly`, `monthly` (mindestens einer) |
 | Abfrageintervall | 15 min | 5 – 1440 min |
+
+## Zwei-Faktor-Authentifizierung (2FA)
+
+Der API-Login kennt nur Benutzer und Passwort. Ist am Gateway 2FA für
+Administratoren aktiv, scheitert **jeder** API-Login (Meldung „Benutzername oder
+Passwort falsch“). 2FA ist ein globaler Schalter ohne dokumentierte Ausnahmen;
+abschalten per SSH in Clish als Super-Administrator: `set admin-2fa off`
+(die WebUI verweigert das teils mit „no privileges“). Zum Ausgleich den
+Admin-Zugriff auf wenige vertrauenswürdige IPs beschränken.
 
 ## Entitäten, Dashboard, Diagnose
 

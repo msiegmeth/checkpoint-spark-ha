@@ -26,6 +26,8 @@ sensors.
 - Firmware R81.10.x or R82.00.x (others may work)
 - REST API enabled on the gateway (`set rest-api mode on` in clish)
 - A dedicated administrator account, ideally with the **read-only** role
+- Administrator **2FA disabled** – the REST API cannot do a second factor
+  (see [gateway setup](docs/gateway-setup.md#3-two-factor-authentication-2fa))
 - Home Assistant 2025.8 or newer
 
 See [docs/gateway-setup.md](docs/gateway-setup.md) for the gateway side.
@@ -88,15 +90,27 @@ moderate, especially when several report types are selected.
 
 ## Entities
 
-All entities belong to one device per gateway.
+All entities belong to one device per gateway. `<type>` is the report type
+(`hourly`, `daily`, `weekly`, `monthly`); a report covers the last hour, 24 h,
+7 days or 30 days. Sensors are only created for values the report actually
+contains (e.g. the hourly report has no IPS or high-risk figures).
 
-| Entity | Description |
-|---|---|
-| `<Report type> report` (timestamp, diagnostic) | When the report of this type was fetched last |
+| Entity | Unit | Attributes (not recorded) |
+|---|---|---|
+| `<type>` traffic | GB | `top_apps_by_bandwidth`, `top_sites_by_bandwidth`, `top_categories_by_bandwidth`, `top_users_by_bandwidth`, `bandwidth_history` |
+| `<type>` download / upload | GB | – |
+| `<type>` sessions | – | `top_apps_by_sessions`, `top_sites_by_sessions`, `top_categories_by_sessions`, `top_users_by_sessions` |
+| `<type>` high-risk app sessions | – | `top_high_risk_apps`, `top_high_risk_users` |
+| `<type>` IPS events | – | `top_protections` (name, sessions, severity, CVE) |
+| `<type>` virus incidents | – | `top_malwares` (name, incidents, severity) |
+| `<type>` bot incidents | – | – |
+| `<type>` Threat Emulation malware | – | – |
+| `<type>` infected hosts | – | `top_infected_hosts`, `infected_hosts`, `possibly_infected_hosts` |
+| `<type>` emulated files, newly / critically infected hosts, infected servers | – | disabled by default |
+| `<type>` report (timestamp, diagnostic) | – | `period_start`, `status`, `fetched` |
+| Active blades (diagnostic) | – | `blades` (enabled state per software blade) |
 
-Key figures from the reports (threats, top lists, …) are being added; see
-the [CHANGELOG](CHANGELOG.md). Large lists are exposed as attributes and are
-excluded from the recorder.
+The device shows the firmware version and MAC address from the report.
 
 ## Dashboard
 
@@ -123,7 +137,7 @@ logger:
 | Problem | Hint |
 |---|---|
 | Cannot connect | REST API enabled? Port 4434 reachable from Home Assistant? Administrator access allowed from the HA network? |
-| Invalid username or password | Check user/password and that the administrator is allowed to log in from the HA network |
+| Invalid username or password | Check user/password. **Administrator 2FA enabled?** The API login then always fails – see [gateway setup](docs/gateway-setup.md#3-two-factor-authentication-2fa) |
 | Report failed | The administrator role may not be allowed to generate reports |
 
 ## Development
