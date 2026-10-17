@@ -1,0 +1,29 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: input
+    id: firmware
+    attributes:
+      label: Gateway model and firmware
+      placeholder: e.g. 1570, R81.10.15
+    validations:
+      required: true
+  - type: input
+    id: ha
+    attributes:
+      label: Home Assistant version
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log (debug logging for custom_components.checkpoint_spark)
+      description: Remove IP addresses, host names and user names before posting.
+      render: text
