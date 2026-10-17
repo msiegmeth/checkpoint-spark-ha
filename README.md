@@ -123,7 +123,7 @@ logger:
 | Problem | Hint |
 |---|---|
 | Cannot connect | REST API enabled? Port 4434 reachable from Home Assistant? Administrator access allowed from the HA network? |
-| Invalid username or password | Note that the Spark may answer wrong logins with HTTP 400 or 401 |
+| Invalid username or password | Check user/password and that the administrator is allowed to log in from the HA network |
 | Report failed | The administrator role may not be allowed to generate reports |
 
 ## Development

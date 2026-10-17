@@ -74,7 +74,13 @@ class SparkApi:
         except (TimeoutError, aiohttp.ClientError) as err:
             raise SparkConnectionError(f"{command}: {err}") from err
 
-        if command == "login" and resp.status in (400, 401, 403):
+        # Wrong credentials come back as 400/401, on some firmware as
+        # 500 {"errorCode": "system_error", "errors": ["Web server error"]}.
+        if command == "login" and (
+            resp.status in (400, 401, 403)
+            or (resp.status == 500 and "system_error" in text)
+        ):
+            _LOGGER.debug("login rejected: HTTP %s %s", resp.status, text[:200])
             raise SparkAuthError(f"login rejected (HTTP {resp.status})")
         if resp.status in (401, 403):
             raise SparkAuthError(f"{command}: HTTP {resp.status}")

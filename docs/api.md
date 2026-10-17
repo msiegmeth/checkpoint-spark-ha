@@ -6,7 +6,7 @@ Base URL: `https://<host>:4434/web-api/<command>`, always `POST` with
 
 | Command | Body | Answer |
 |---|---|---|
-| `login` | `{"user": "…", "password": "…"}` | `sid`, `role`, `read-only`, `session-timeout` (≈ 10 min). Wrong credentials: HTTP 400 or 401 |
+| `login` | `{"user": "…", "password": "…"}` | `sid`, `role`, `read-only`, `session-timeout` (≈ 10 min). Wrong credentials: HTTP 400/401, on some firmware HTTP 500 `system_error` |
 | `generate-report` | `{"type": "hourly\|daily\|weekly\|monthly"}` | `reportData`: base64-encoded JSON. The answer can be an object or a list with one object |
 | `run-clish-command` | `{"script": "<base64 clish>"}` | `output`: base64. **Only `show …` commands are used** |
 | `logout` | none | – |
