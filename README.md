@@ -160,6 +160,18 @@ actions:
       message: "{{ trigger.event.data.name }} ({{ trigger.event.data.value }})"
 ```
 
+## Syslog (preview)
+
+Option *Receive syslog* starts a UDP listener (default port **5140**; UniFi
+Network already uses 5514). Only datagrams from the gateway's IP are accepted.
+The last 200 messages are kept **in memory only** and can be read with the
+action `checkpoint_spark.syslog_messages` or in the diagnostics; the sensor
+*Syslog messages* counts them. This stage is for analysing the log format –
+parsing into events/sensors follows.
+
+On the gateway, add a syslog server pointing to the Home Assistant host and
+port (UDP) and enable sending security logs to it.
+
 ## Actions
 
 | Action | Data | Response |
@@ -167,6 +179,7 @@ actions:
 | `checkpoint_spark.refresh` | – | fetches all selected reports now |
 | `checkpoint_spark.get_report` | `report_type` | `{report_type, fetched, report}` (decoded report) |
 | `checkpoint_spark.show_command` | `command` (must start with `show`) | `{command, output}` |
+| `checkpoint_spark.syslog_messages` | `limit` (1–200, default 50) | `{received, dropped, messages}` (newest first) |
 
 All actions accept an optional `config_entry_id` when several gateways are configured.
 

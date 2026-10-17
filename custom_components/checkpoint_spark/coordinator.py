@@ -99,6 +99,7 @@ class SparkCoordinator(DataUpdateCoordinator[SparkData]):
         # threat events: last time each (kind, name) was seen
         self._seen: dict[tuple[str, str], datetime] = {}
         self._force = False
+        self.syslog: Any = None  # SyslogReceiver when enabled in the options
 
     def api(self) -> SparkApi:
         data = self.config_entry.data

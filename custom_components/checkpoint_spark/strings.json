@@ -42,12 +42,15 @@
           "scan_interval_weekly": "Polling interval weekly report",
           "scan_interval_monthly": "Polling interval monthly report",
           "monitored_blades": "Monitored blades",
-          "redact_diagnostics": "Redact network data in diagnostics"
+          "redact_diagnostics": "Redact network data in diagnostics",
+          "syslog_enabled": "Receive syslog (preview)",
+          "syslog_port": "Syslog UDP port"
         },
         "description": "Each report type is fetched at its own interval. Generating reports costs CPU on the gateway – keep long periods (weekly, monthly) at hours.",
         "data_description": {
           "monitored_blades": "The 'Blade failure' sensor turns on when one of these blades is not enabled.",
-          "redact_diagnostics": "Replaces IP and MAC addresses and removes gateway name and host, so diagnostics can be shared in a public issue."
+          "redact_diagnostics": "Replaces IP and MAC addresses and removes gateway name and host, so diagnostics can be shared in a public issue.",
+          "syslog_enabled": "Listens for the gateway's log messages (only from its IP) and keeps the last 200 in memory – for analysing the log format. Configure the gateway to send syslog to this Home Assistant host."
         }
       }
     },
@@ -292,6 +295,9 @@
       },
       "next_contract_expiry": {
         "name": "Next contract expiry"
+      },
+      "syslog_messages": {
+        "name": "Syslog messages"
       }
     },
     "binary_sensor": {
@@ -347,6 +353,20 @@
           "description": "e.g. show diag"
         }
       }
+    },
+    "syslog_messages": {
+      "name": "Syslog messages",
+      "description": "Returns the last received syslog messages (newest first).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Only needed with several gateways."
+        },
+        "limit": {
+          "name": "Limit",
+          "description": "Number of messages (1–200)"
+        }
+      }
     }
   },
   "exceptions": {
@@ -358,6 +378,9 @@
     },
     "only_show": {
       "message": "Only clish commands starting with 'show' are allowed."
+    },
+    "syslog_disabled": {
+      "message": "Syslog reception is not enabled in the options."
     }
   }
 }

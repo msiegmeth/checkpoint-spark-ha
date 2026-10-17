@@ -82,7 +82,28 @@ def async_setup_services(hass: HomeAssistant) -> None:
             await api.logout()
         return {"command": command, "output": output}
 
+    async def syslog_messages(call: ServiceCall) -> ServiceResponse:
+        coordinator = _coordinator(hass, call)
+        rx = coordinator.syslog
+        if rx is None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="syslog_disabled"
+            )
+        limit = call.data["limit"]
+        return {
+            "received": rx.received,
+            "dropped": rx.dropped,
+            "messages": list(reversed(rx.messages))[:limit],
+        }
+
     hass.services.async_register(DOMAIN, "refresh", refresh, schema=vol.Schema(_ENTRY))
+    hass.services.async_register(
+        DOMAIN,
+        "syslog_messages",
+        syslog_messages,
+        schema=vol.Schema({**_ENTRY, vol.Optional("limit", default=50): vol.All(int, vol.Range(1, 200))}),
+        supports_response=SupportsResponse.ONLY,
+    )
     hass.services.async_register(
         DOMAIN,
         "get_report",

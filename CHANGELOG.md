@@ -4,6 +4,15 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### New
+- **Syslog receiver (preview)** – optional UDP listener (default port 5140) for
+  the gateway's log messages. Accepts the gateway IP only, keeps the last 200
+  messages in memory, sensor *Syslog messages*, action
+  `checkpoint_spark.syslog_messages`. Parsing into events follows once real
+  log samples are analysed.
+
 ## [0.3.0] - 2026-10-18
 
 ### New

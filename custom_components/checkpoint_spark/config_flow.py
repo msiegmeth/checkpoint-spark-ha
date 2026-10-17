@@ -28,6 +28,9 @@ from .api import SparkApi, SparkAuthError, SparkError
 from .const import (
     CONF_MONITORED_BLADES,
     CONF_REDACT_DIAGNOSTICS,
+    CONF_SYSLOG_ENABLED,
+    CONF_SYSLOG_PORT,
+    DEFAULT_SYSLOG_PORT,
     CONF_REPORT_TYPES,
     CONF_SCAN_INTERVAL_MIN,
     DEFAULT_PORT,
@@ -224,6 +227,12 @@ class SparkOptionsFlow(OptionsFlowWithReload):
                 default=options.get(CONF_REDACT_DIAGNOSTICS, False),
             )
         ] = bool
+        fields[
+            vol.Optional(CONF_SYSLOG_ENABLED, default=options.get(CONF_SYSLOG_ENABLED, False))
+        ] = bool
+        fields[
+            vol.Optional(CONF_SYSLOG_PORT, default=options.get(CONF_SYSLOG_PORT, DEFAULT_SYSLOG_PORT))
+        ] = vol.All(vol.Coerce(int), vol.Range(min=1024, max=65535))
         return self.async_show_form(
             step_id="init", data_schema=vol.Schema(fields), errors=errors
         )

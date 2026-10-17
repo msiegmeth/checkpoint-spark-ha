@@ -448,6 +448,45 @@ class SparkSystemSensor(SparkEntity, SensorEntity):
         return self.entity_description.attrs_fn(self._system())
 
 
+class SparkSyslogSensor(SparkEntity, SensorEntity):
+    """Syslog messages received from the gateway since start (preparation stage)."""
+
+    _attr_translation_key = "syslog_messages"
+    _attr_icon = "mdi:math-log"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: SparkCoordinator) -> None:
+        super().__init__(coordinator, "syslog_messages")
+        self._pending = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self.coordinator.syslog.async_add_listener(self._message))
+
+    def _message(self) -> None:
+        # many messages per second are possible: write the state at most every 5 s
+        if self._pending is None:
+            self._pending = self.hass.loop.call_later(5, self._write)
+
+    def _write(self) -> None:
+        self._pending = None
+        self.async_write_ha_state()
+
+    @property
+    def native_value(self) -> int:
+        return self.coordinator.syslog.received
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        rx = self.coordinator.syslog
+        return {
+            "port": rx.port,
+            "dropped": rx.dropped,
+            "last_received": rx.last_received.isoformat() if rx.last_received else None,
+        }
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: SparkConfigEntry,
@@ -469,4 +508,6 @@ async def async_setup_entry(
     entities.extend(
         SparkSystemSensor(coordinator, d) for d in SYSTEM_SENSORS if d.exists_fn(system)
     )
+    if coordinator.syslog:
+        entities.append(SparkSyslogSensor(coordinator))
     async_add_entities(entities)

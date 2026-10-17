@@ -42,12 +42,15 @@
           "scan_interval_weekly": "Abfrageintervall Wochen-Report",
           "scan_interval_monthly": "Abfrageintervall Monats-Report",
           "monitored_blades": "Überwachte Blades",
-          "redact_diagnostics": "Netzwerkdaten in Diagnosen schwärzen"
+          "redact_diagnostics": "Netzwerkdaten in Diagnosen schwärzen",
+          "syslog_enabled": "Syslog empfangen (Vorschau)",
+          "syslog_port": "Syslog-UDP-Port"
         },
         "description": "Jeder Report-Typ wird in seinem eigenen Intervall abgerufen. Reports kosten Rechenzeit am Gateway – lange Zeiträume (Woche, Monat) besser im Stundenbereich.",
         "data_description": {
           "monitored_blades": "Der Sensor „Blade ausgefallen“ geht an, wenn eines dieser Blades nicht aktiv ist.",
-          "redact_diagnostics": "Ersetzt IP- und MAC-Adressen und entfernt Gateway-Name und Host – dann lassen sich Diagnosen gefahrlos in einem öffentlichen Issue teilen."
+          "redact_diagnostics": "Ersetzt IP- und MAC-Adressen und entfernt Gateway-Name und Host – dann lassen sich Diagnosen gefahrlos in einem öffentlichen Issue teilen.",
+          "syslog_enabled": "Empfängt die Log-Meldungen des Gateways (nur von dessen IP) und hält die letzten 200 im Speicher – zur Analyse des Log-Formats. Am Gateway den Log-Server auf diesen Home-Assistant-Host stellen."
         }
       }
     },
@@ -292,6 +295,9 @@
       },
       "next_contract_expiry": {
         "name": "Nächster Vertragsablauf"
+      },
+      "syslog_messages": {
+        "name": "Syslog-Meldungen"
       }
     },
     "binary_sensor": {
@@ -347,6 +353,20 @@
           "description": "z. B. show diag"
         }
       }
+    },
+    "syslog_messages": {
+      "name": "Syslog-Meldungen",
+      "description": "Gibt die zuletzt empfangenen Syslog-Meldungen zurück (neueste zuerst).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Nur bei mehreren Gateways nötig."
+        },
+        "limit": {
+          "name": "Limit",
+          "description": "Anzahl Meldungen (1–200)"
+        }
+      }
     }
   },
   "exceptions": {
@@ -358,6 +378,9 @@
     },
     "only_show": {
       "message": "Nur Clish-Befehle, die mit „show“ beginnen, sind erlaubt."
+    },
+    "syslog_disabled": {
+      "message": "Syslog-Empfang ist in den Optionen nicht aktiviert."
     }
   }
 }

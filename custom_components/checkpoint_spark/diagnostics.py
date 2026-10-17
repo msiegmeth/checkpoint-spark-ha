@@ -51,4 +51,11 @@ async def async_get_config_entry_diagnostics(
         "system": async_redact_data(data.system, redact),
         "reports": async_redact_data(data.reports, redact),
     }
+    if (rx := entry.runtime_data.syslog) is not None:
+        result["syslog"] = {
+            "port": rx.port,
+            "received": rx.received,
+            "dropped": rx.dropped,
+            "messages": list(rx.messages)[-20:],
+        }
     return _anonymise(result) if network else result
