@@ -141,6 +141,8 @@ class SparkSummaryDescription(SensorEntityDescription):
 
     header: str
     attrs_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = field(default=None)
+    # Only enabled by default when this software blade is active on the gateway.
+    blade: str | None = None
 
 
 def _bytes(key: str, header: str, icon: str, attrs_fn=None) -> SparkSummaryDescription:
@@ -157,15 +159,15 @@ def _bytes(key: str, header: str, icon: str, attrs_fn=None) -> SparkSummaryDescr
     )
 
 
-def _count(key: str, header: str, icon: str, attrs_fn=None, enabled=True) -> SparkSummaryDescription:
+def _count(key: str, header: str, icon: str, attrs_fn=None, blade=None) -> SparkSummaryDescription:
     return SparkSummaryDescription(
         key=key,
         header=header,
         icon=icon,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
-        entity_registry_enabled_default=enabled,
         attrs_fn=attrs_fn,
+        blade=blade,
     )
 
 
@@ -225,14 +227,14 @@ SUMMARY_SENSORS: tuple[SparkSummaryDescription, ...] = (
         _charts(top_malwares="topMalwaresChart"),
     ),
     _count("bot_incidents", "TOTAL_AB_MALWARES", "mdi:robot-angry"),
-    _count("emulation_malware", "TOTAL_TE_MALWARES", "mdi:flask"),
-    _count("emulated_files", "TOTAL_TE_FILES_SCANNED_CLOUD", "mdi:file-search", enabled=False),
+    _count("emulation_malware", "TOTAL_TE_MALWARES", "mdi:flask", blade="threat_emulation"),
+    _count("emulated_files", "TOTAL_TE_FILES_SCANNED_CLOUD", "mdi:file-search", blade="threat_emulation"),
     _count("infected_hosts", "TOTAL_INFECTED_HOSTS", "mdi:laptop-off", _infected_attrs),
-    _count("new_infected_hosts", "TOTAL_NEWLY_INFECTED_HOSTS", "mdi:laptop-off", enabled=False),
+    _count("new_infected_hosts", "TOTAL_NEWLY_INFECTED_HOSTS", "mdi:laptop-off"),
     _count(
-        "critical_infected_hosts", "TOTAL_CRITICAL_INFECTED_HOSTS", "mdi:laptop-off", enabled=False
+        "critical_infected_hosts", "TOTAL_CRITICAL_INFECTED_HOSTS", "mdi:laptop-off"
     ),
-    _count("infected_servers", "TOTAL_INFECTED_SERVERS", "mdi:server-off", enabled=False),
+    _count("infected_servers", "TOTAL_INFECTED_SERVERS", "mdi:server-off"),
 )
 
 
@@ -263,6 +265,17 @@ def _first_report(coordinator: SparkCoordinator) -> dict[str, Any]:
         if isinstance(report, dict):
             return report
     return {}
+
+
+def _blades(coordinator: SparkCoordinator) -> dict[str, bool]:
+    """Software blade name -> enabled, e.g. {"ips": True, "threat_emulation": False}."""
+    blades = _first_report(coordinator).get("bladesStatus")
+    out: dict[str, bool] = {}
+    for blade in blades if isinstance(blades, list) else []:
+        if isinstance(blade, dict) and blade.get("bladeCode"):
+            name = str(blade["bladeCode"]).removeprefix("BLADE.").lower()
+            out[name] = bool(_int(blade.get("enabled")))
+    return out
 
 
 def _report_info(coordinator: SparkCoordinator) -> dict[str, Any]:
@@ -299,9 +312,12 @@ class SparkSummarySensor(SparkReportEntity, SensorEntity):
         coordinator: SparkCoordinator,
         report_type: str,
         description: SparkSummaryDescription,
+        blades: dict[str, bool],
     ) -> None:
         super().__init__(coordinator, report_type, description.key)
         self.entity_description = description
+        if description.blade:
+            self._attr_entity_registry_enabled_default = blades.get(description.blade, True)
 
     @property
     def native_value(self) -> int | None:
@@ -355,13 +371,7 @@ class SparkBladesSensor(SparkEntity, SensorEntity):
         super().__init__(coordinator, "active_blades")
 
     def _blades(self) -> dict[str, bool]:
-        blades = _first_report(self.coordinator).get("bladesStatus")
-        out: dict[str, bool] = {}
-        for blade in blades if isinstance(blades, list) else []:
-            if isinstance(blade, dict) and blade.get("bladeCode"):
-                name = str(blade["bladeCode"]).removeprefix("BLADE.").lower()
-                out[name] = bool(_int(blade.get("enabled")))
-        return out
+        return _blades(self.coordinator)
 
     @property
     def native_value(self) -> int | None:
@@ -380,12 +390,13 @@ async def async_setup_entry(
 ) -> None:
     coordinator = entry.runtime_data
     entities: list[SensorEntity] = [SparkBladesSensor(coordinator)]
+    blades = _blades(coordinator)
     for report_type in coordinator.report_types:
         entities.append(SparkReportTimestampSensor(coordinator, report_type))
         report = coordinator.data.reports.get(report_type) or {}
         # Only create what this report type (and firmware) actually delivers.
         entities.extend(
-            SparkSummarySensor(coordinator, report_type, description)
+            SparkSummarySensor(coordinator, report_type, description, blades)
             for description in SUMMARY_SENSORS
             if _has_summary(report, description.header)
         )

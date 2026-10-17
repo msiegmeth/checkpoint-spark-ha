@@ -104,9 +104,9 @@ contains (e.g. the hourly report has no IPS or high-risk figures).
 | `<type>` IPS events | – | `top_protections` (name, sessions, severity, CVE) |
 | `<type>` virus incidents | – | `top_malwares` (name, incidents, severity) |
 | `<type>` bot incidents | – | – |
-| `<type>` Threat Emulation malware | – | – |
 | `<type>` infected hosts | – | `top_infected_hosts`, `infected_hosts`, `possibly_infected_hosts` |
-| `<type>` emulated files, newly / critically infected hosts, infected servers | – | disabled by default |
+| `<type>` newly / critically infected hosts, infected servers | – | – |
+| `<type>` Threat Emulation malware, emulated files | – | enabled by default only if the Threat Emulation blade is active |
 | `<type>` report (timestamp, diagnostic) | – | `period_start`, `status`, `fetched` |
 | Active blades (diagnostic) | – | `blades` (enabled state per software blade) |
 

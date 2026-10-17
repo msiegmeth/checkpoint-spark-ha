@@ -4,6 +4,13 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-10-17
+
+### Changed
+- Newly / critically infected hosts and infected servers are now enabled by default
+- Threat Emulation sensors (malware, emulated files) are only enabled by default
+  when the Threat Emulation blade is active on the gateway
+
 ## [0.1.0] - 2026-10-17
 
 ### Added
