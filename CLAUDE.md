@@ -19,9 +19,12 @@ HACS-kompatibel: `custom_components/checkpoint_spark/` im Root, `docs/`,
 - Repo: `/homeassistant/dev/checkpoint-spark-ha` (Gitea `gitadmin/checkpoint-spark-ha`,
   privat) → Push-Mirror → GitHub `msiegmeth/checkpoint-spark-ha` (öffentlich, HACS-Quelle).
   Auf GitHub nie direkt ändern.
-- Test: `/homeassistant/custom_components/checkpoint_spark` ist ein **relativer** Symlink
-  auf den Repo-Ordner (Core-Container mountet als `/config`). Im HA-Config-Repo per
-  `.gitignore` ausgeschlossen.
+- Installiert über **HACS** (Custom Repository `msiegmeth/checkpoint-spark-ha`).
+  Unveröffentlichte Stände testen: HACS-Ordner `/homeassistant/custom_components/checkpoint_spark`
+  sichern/entfernen und kurzzeitig durch einen **relativen** Symlink
+  `../dev/checkpoint-spark-ha/custom_components/checkpoint_spark` ersetzen (Core-Container
+  mountet als `/config`); nach dem Release wieder per HACS installieren. Pfad ist im
+  HA-Config-Repo gitignored.
 - Python-Änderung → HA-Neustart (ankündigen). Report-Struktur über Diagnostics
   (`/api/diagnostics/config_entry/<id>`) ansehen.
 - Release: `manifest.json`-Version + CHANGELOG, Tag `vX.Y.Z`, push → GitHub-Action
