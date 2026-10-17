@@ -29,20 +29,35 @@ Einrichtung am Gateway: [docs/gateway-setup.md](docs/gateway-setup.md)
 
 ### HACS (empfohlen)
 
-1. HACS → ⋮ → **Benutzerdefinierte Repositories**
-2. Repository `https://github.com/msiegmeth/checkpoint-spark-ha`, Typ **Integration**
-3. **Check Point Quantum Spark** installieren, Home Assistant neu starten.
+[![Repository in HACS öffnen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=msiegmeth&repository=checkpoint-spark-ha&category=integration)
+
+1. Button oben klicken (oder in HACS: ⋮ → **Benutzerdefinierte Repositories**,
+   Repository `https://github.com/msiegmeth/checkpoint-spark-ha`, Typ **Integration**).
+2. **Herunterladen** klicken und bestätigen.
+3. Home Assistant neu starten (**Einstellungen → System → ⋮ → Neu starten**).
 
 Neue Releases werden danach in Home Assistant als Update angeboten.
 
 ### Manuell
 
-`custom_components/checkpoint_spark` in den Ordner `custom_components` der
-HA-Konfiguration kopieren und neu starten.
+1. Beim neuesten [Release](https://github.com/msiegmeth/checkpoint-spark-ha/releases/latest)
+   `Source code (zip)` herunterladen und entpacken.
+2. Den Ordner `custom_components/checkpoint_spark` in den Ordner
+   `custom_components` der HA-Konfiguration kopieren (bei Bedarf anlegen).
+   Ergebnis: `<config>/custom_components/checkpoint_spark/manifest.json`.
+   Wege: Samba-Freigabe, SSH-/Terminal-Add-on oder Studio Code Server.
+3. Home Assistant neu starten.
+
+Manuelle Installationen werden **nicht** automatisch aktualisiert – für ein
+neues Release die Schritte wiederholen.
 
 ## Konfiguration
 
-**Einstellungen → Geräte & Dienste → Integration hinzufügen → Check Point Quantum Spark**
+[![Einrichtung in Home Assistant starten](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=checkpoint_spark)
+
+Button oben klicken oder **Einstellungen → Geräte & Dienste → Integration
+hinzufügen → Check Point Quantum Spark**. Fehlt die Integration in der Liste,
+die Browserseite neu laden (die Liste wird zwischengespeichert).
 
 | Feld | Standard | Beschreibung |
 |---|---|---|

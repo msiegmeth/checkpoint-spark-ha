@@ -34,20 +34,37 @@ See [docs/gateway-setup.md](docs/gateway-setup.md) for the gateway side.
 
 ### HACS (recommended)
 
-1. HACS → ⋮ → **Custom repositories**
-2. Repository: `https://github.com/msiegmeth/checkpoint-spark-ha`, type **Integration**
-3. Install **Check Point Quantum Spark**, then restart Home Assistant.
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=msiegmeth&repository=checkpoint-spark-ha&category=integration)
+
+1. Click the button above (or in HACS: ⋮ → **Custom repositories**, repository
+   `https://github.com/msiegmeth/checkpoint-spark-ha`, type **Integration**).
+2. Click **Download** and confirm.
+3. Restart Home Assistant (**Settings → System → ⋮ → Restart**).
 
 New releases are then offered as updates in Home Assistant.
 
 ### Manual
 
-Copy `custom_components/checkpoint_spark` into the `custom_components`
-folder of your Home Assistant configuration and restart.
+1. Download `Source code (zip)` of the latest
+   [release](https://github.com/msiegmeth/checkpoint-spark-ha/releases/latest)
+   and unpack it.
+2. Copy the folder `custom_components/checkpoint_spark` into the
+   `custom_components` folder of your Home Assistant configuration
+   (create `custom_components` if it does not exist). The result must be
+   `<config>/custom_components/checkpoint_spark/manifest.json`.
+   Tools: Samba share, SSH / Terminal add-on or the Studio Code Server add-on.
+3. Restart Home Assistant.
+
+Manual installations are **not** updated automatically – repeat the steps
+for a new release.
 
 ## Configuration
 
-**Settings → Devices & services → Add integration → Check Point Quantum Spark**
+[![Open your Home Assistant instance and start setting up Check Point Quantum Spark.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=checkpoint_spark)
+
+Click the button above, or go to **Settings → Devices & services → Add
+integration → Check Point Quantum Spark**. If the integration is not in the
+list, reload the browser page (the list is cached).
 
 | Field | Default | Description |
 |---|---|---|
