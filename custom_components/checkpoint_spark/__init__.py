@@ -44,16 +44,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_setup_services(hass)
     # Dashboard card shipped with the integration (no separate resource needed)
     integration = await async_get_integration(hass, DOMAIN)
-    await hass.http.async_register_static_paths(
-        [
-            StaticPathConfig(
-                CARD_URL,
-                str(Path(__file__).parent / "frontend" / "checkpoint-spark-card.js"),
-                True,
-            )
-        ]
-    )
-    add_extra_js_url(hass, f"{CARD_URL}?v={integration.version}")
+    card = Path(__file__).parent / "frontend" / "checkpoint-spark-card.js"
+    await hass.http.async_register_static_paths([StaticPathConfig(CARD_URL, str(card), True)])
+    # version + file time: browsers reload the card whenever the file changes (also between releases)
+    mtime = int((await hass.async_add_executor_job(card.stat)).st_mtime)
+    add_extra_js_url(hass, f"{CARD_URL}?v={integration.version}-{mtime}")
     return True
 
 

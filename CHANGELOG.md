@@ -7,11 +7,23 @@ All notable changes are documented here. Format based on
 ## [Unreleased]
 
 ### New
-- **Dashboard card included.** After installing the integration, add the card
-  *Check Point Quantum Spark* from the card picker – no extra resources or other
-  custom cards needed. Choose the gateway, done. Shows status (internet,
-  infection, blades, hardware), key figures with detail dialogs, and tabs for
-  threats, hosts, apps & sites, real-time detections and system values.
+- **Dashboard card included – an interactive event viewer.** After installing
+  the integration, add the card *Check Point Quantum Spark* from the card
+  picker – no extra resources or other custom cards needed. Choose the gateway,
+  done.
+  - One period selector for everything: **1 h · 24 h · 7 days · 30 days**
+  - Summary like the gateway's own report: volume (↓/↑), sessions, IPS,
+    malware/DNS blocked, bots, infected – plus top app and top site
+  - **Traffic** tab: volume over time (bars with grid), flow diagram
+    Download/Upload → categories, top apps / sites / categories by volume or
+    sessions with icons, high-risk apps
+  - **Threat Prevention** tab: filter by type (IPS, malware/DNS, bots) and
+    direction, flow diagram direction → type → action, event list from syslog –
+    tap a row for source, target, CVE links and requested URL – and the report
+    totals (protections, malware, hosts)
+  - **System** tab: blades, internet, VPN, temperatures, memory, eMMC,
+    contracts, firmware
+  - Follows the HA theme (light/dark), English and German, no external requests
 - **Direction of syslog detections:** every IPS / malware detection now carries
   `direction` – `inbound` (external → internal), `internal` (internal → internal)
   or `outbound` (internal → external). Shown in the card, part of the event data,

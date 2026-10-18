@@ -1,12 +1,13 @@
 /*
- * Check Point Quantum Spark card – shipped with the checkpoint_spark integration.
- * No dependencies: plain custom element, HA theme variables, own detail dialog.
- * All values coming from the gateway (names, hosts, URLs) are HTML-escaped.
+ * Check Point Quantum Spark – interactive event viewer card (shipped with the checkpoint_spark integration).
+ * No dependencies: plain custom element, HA theme variables, own SVG charts (bars + sankey).
+ * Every value coming from the gateway (names, hosts, URLs) is HTML-escaped. No external requests
+ * (icons are Material Design Icons that ship with Home Assistant).
  *
  * Config:
  *   type: custom:checkpoint-spark-card
  *   device_id: <device>            # optional, first Quantum Spark device otherwise
- *   period: daily|weekly|monthly   # report used for the key figures (default daily)
+ *   period: hourly|daily|weekly|monthly   # initial period (default daily)
  *   resolvers: [192.168.1.53]      # optional: own DNS resolvers (marked in host lists)
  *   names: {192.168.1.10: NAS}     # optional: names for IPs without a device tracker
  */
@@ -15,55 +16,64 @@ const DOMAIN = "checkpoint_spark";
 
 const T = {
   en: {
-    title: "Firewall", traffic: "Traffic", sessions: "Sessions", ips: "IPS events", blocked: "Blocked",
-    bots: "Bots", infected: "Infected", threats: "Threats", hosts: "Hosts", apps: "Apps & sites",
-    realtime: "Real-time", system: "System", online: "online", offline: "offline", noInfection: "no active infection",
-    threat: "threat active", blades: "blades", bladeOff: "blade off", hwOk: "hardware OK", hwProblem: "hardware problem",
-    none: "none", time: "Time", name: "Name", hits: "Hits", severity: "Severity", source: "Source", target: "Target",
-    action: "Action", incidents: "Incidents", volume: "Volume", app: "App", site: "Site", host: "Host",
-    d24: "24 h", d7: "7 days", d30: "30 days", resolver: "DNS resolver – usually DNS trap, no infection",
-    blockedHint: "Mostly DNS trap: access to a known malicious domain was prevented – not an infection. Real infections show under “Infected”.",
-    topProt: "Top IPS protections", topMal: "Malware / DNS blocked", hostsInc: "Hosts with incidents",
-    lastDet: "Stored detections", drops: "Firewall drops", topSrc: "Top sources (24 h)", topSvc: "Top services (24 h)",
-    syslogOff: "Syslog reception is off – enable it in the integration options for real-time detections.",
-    internet: "Internet", since: "since", vpn: "VPN tunnels up", cpu: "CPU / DDR", mem: "Memory", emmc: "eMMC wear",
-    contracts: "Contracts until", firmware: "Firmware", expired: "expired", report: "Report", close: "Close",
-    noDevice: "No Check Point Quantum Spark device found.", scanned: "Scanned hosts (h/day/week)",
-    unique: "Threats, unique (h/day/week)", perDay: "Per day", requested: "Requested",
-    highRisk: "High-risk apps", newInf: "newly infected", critInf: "critically infected", servers: "infected servers",
-    inbound: "external → internal", internal: "internal → internal", outbound: "internal → external", direction: "Direction",
-    inS: "ext→int", intS: "int→int", outS: "int→ext",
-    dirHint: "Direction is known for syslog detections only (the reports carry no source). Internal or outbound attacks deserve a closer look.",
+    title: "Firewall", p_hourly: "1 h", p_daily: "24 h", p_weekly: "7 days", p_monthly: "30 days",
+    traffic: "Traffic", tp: "Threat Prevention", system: "System", volume: "Volume", down: "Download", up: "Upload",
+    sessions: "Sessions", ips: "IPS", blocked: "Malware / DNS", bots: "Bots", infected: "Infected", topApp: "Top app",
+    topSite: "Top site", history: "Volume over time", flow: "Flow", apps: "Apps", sites: "Sites",
+    categories: "Categories", byVolume: "by volume", bySessions: "by sessions", highRisk: "High-risk apps",
+    all: "All", type: "Type", dir: "Direction", inbound: "external → internal", internal: "internal → internal",
+    outbound: "internal → external", unknown: "unknown", events: "Events (syslog)", noEvents: "No events in this period.",
+    noSyslog: "Syslog reception is off – enable it in the integration options to see single events with time, source and direction.",
+    reportPart: "From the report (totals, no time/source)", protections: "Top IPS protections", malware: "Malware / DNS blocked",
+    hosts: "Hosts with incidents", time: "Time", name: "Name", sev: "Severity", action: "Action", src: "Source", dst: "Target",
+    hits: "Hits", incidents: "Incidents", host: "Host", none: "none", requested: "Requested", resolver: "DNS resolver – usually DNS trap",
+    dnsHint: "Mostly DNS trap: access to a known malicious domain was prevented – not an infection.",
+    online: "online", offline: "offline", noInfection: "no active infection", threat: "threat active", blades: "blades",
+    bladeOff: "blade off", hwOk: "hardware OK", hwProblem: "hardware problem", internet: "Internet", since: "since",
+    vpn: "VPN tunnels up", cpu: "CPU / DDR", mem: "Memory", emmc: "eMMC wear", contracts: "Contracts until",
+    firmware: "Firmware", expired: "expired", report: "Report", noDevice: "No Check Point Quantum Spark device found.",
+    blockedA: "blocked", detectedA: "detected", allowedA: "allowed", other: "Other", noData: "no data",
+    infHosts: "infected hosts", newInf: "newly infected", critInf: "critically infected", servers: "infected servers",
+    noReport: "not in this report",
   },
   de: {
-    title: "Firewall", traffic: "Datenvolumen", sessions: "Sitzungen", ips: "IPS-Ereignisse", blocked: "Blockiert",
-    bots: "Bots", infected: "Infiziert", threats: "Bedrohungen", hosts: "Hosts", apps: "Apps & Seiten",
-    realtime: "Echtzeit", system: "System", online: "online", offline: "offline", noInfection: "keine aktive Infektion",
-    threat: "Bedrohung aktiv", blades: "Blades", bladeOff: "Blade aus", hwOk: "Hardware OK", hwProblem: "Hardware-Problem",
-    none: "keine", time: "Zeit", name: "Name", hits: "Treffer", severity: "Schwere", source: "Quelle", target: "Ziel",
-    action: "Aktion", incidents: "Vorfälle", volume: "Volumen", app: "App", site: "Seite", host: "Host",
-    d24: "24 h", d7: "7 Tage", d30: "30 Tage", resolver: "DNS-Resolver – meist DNS-Trap, kein Befall",
-    blockedHint: "Meist DNS-Trap: Der Zugriff auf eine bekannte schädliche Domain wurde verhindert – kein Befall. Ein echter Befall zeigt sich unter „Infiziert“.",
-    topProt: "Top-IPS-Schutzfunktionen", topMal: "Malware / DNS blockiert", hostsInc: "Hosts mit Vorfällen",
-    lastDet: "Gespeicherte Treffer", drops: "Firewall-Drops", topSrc: "Top-Quellen (24 h)", topSvc: "Top-Dienste (24 h)",
-    syslogOff: "Syslog-Empfang ist aus – in den Optionen der Integration einschalten, dann gibt es Echtzeit-Treffer.",
-    internet: "Internet", since: "seit", vpn: "VPN-Tunnel aktiv", cpu: "CPU / DDR", mem: "Arbeitsspeicher", emmc: "eMMC-Verschleiß",
-    contracts: "Verträge bis", firmware: "Firmware", expired: "abgelaufen", report: "Report", close: "Schließen",
-    noDevice: "Kein Check-Point-Quantum-Spark-Gerät gefunden.", scanned: "Gescannte Hosts (h/Tag/Woche)",
-    unique: "Bedrohungen, eindeutig (h/Tag/Woche)", perDay: "Je Tag", requested: "Angefragt",
-    highRisk: "Riskante Apps", newInf: "neu infiziert", critInf: "kritisch infiziert", servers: "infizierte Server",
-    inbound: "extern → intern", internal: "intern → intern", outbound: "intern → extern", direction: "Richtung",
-    inS: "ext→int", intS: "int→int", outS: "int→ext",
-    dirHint: "Die Richtung gibt es nur für Syslog-Treffer (die Reports enthalten keine Quelle). Interne oder ausgehende Angriffe genauer ansehen.",
+    title: "Firewall", p_hourly: "1 h", p_daily: "24 h", p_weekly: "7 Tage", p_monthly: "30 Tage",
+    traffic: "Traffic", tp: "Threat Prevention", system: "System", volume: "Volumen", down: "Download", up: "Upload",
+    sessions: "Sitzungen", ips: "IPS", blocked: "Malware / DNS", bots: "Bots", infected: "Infiziert", topApp: "Top-App",
+    topSite: "Top-Seite", history: "Volumen im Verlauf", flow: "Fluss", apps: "Apps", sites: "Seiten",
+    categories: "Kategorien", byVolume: "nach Volumen", bySessions: "nach Sitzungen", highRisk: "Riskante Apps",
+    all: "Alle", type: "Art", dir: "Richtung", inbound: "extern → intern", internal: "intern → intern",
+    outbound: "intern → extern", unknown: "unbekannt", events: "Ereignisse (Syslog)", noEvents: "Keine Ereignisse in diesem Zeitraum.",
+    noSyslog: "Syslog-Empfang ist aus – in den Optionen der Integration einschalten, dann gibt es einzelne Ereignisse mit Zeit, Quelle und Richtung.",
+    reportPart: "Aus dem Report (Summen, ohne Zeit/Quelle)", protections: "Top-IPS-Schutzfunktionen", malware: "Malware / DNS blockiert",
+    hosts: "Hosts mit Vorfällen", time: "Zeit", name: "Name", sev: "Schwere", action: "Aktion", src: "Quelle", dst: "Ziel",
+    hits: "Treffer", incidents: "Vorfälle", host: "Host", none: "keine", requested: "Angefragt", resolver: "DNS-Resolver – meist DNS-Trap",
+    dnsHint: "Meist DNS-Trap: Der Zugriff auf eine bekannte schädliche Domain wurde verhindert – kein Befall.",
+    online: "online", offline: "offline", noInfection: "keine aktive Infektion", threat: "Bedrohung aktiv", blades: "Blades",
+    bladeOff: "Blade aus", hwOk: "Hardware OK", hwProblem: "Hardware-Problem", internet: "Internet", since: "seit",
+    vpn: "VPN-Tunnel aktiv", cpu: "CPU / DDR", mem: "Arbeitsspeicher", emmc: "eMMC-Verschleiß", contracts: "Verträge bis",
+    firmware: "Firmware", expired: "abgelaufen", report: "Report", noDevice: "Kein Check-Point-Quantum-Spark-Gerät gefunden.",
+    blockedA: "blockiert", detectedA: "erkannt", allowedA: "durchgelassen", other: "Weitere", noData: "keine Daten",
+    infHosts: "infizierte Hosts", newInf: "neu infiziert", critInf: "kritisch infiziert", servers: "infizierte Server",
+    noReport: "nicht in diesem Report",
   },
 };
 
+const PERIODS = ["hourly", "daily", "weekly", "monthly"];
+const PERIOD_HOURS = { hourly: 1, daily: 24, weekly: 168, monthly: 720 };
 const SEV = { "1": "low", "2": "medium", "3": "high", "4": "critical", low: "low", medium: "medium", high: "high", critical: "critical", info: "info" };
-const SEV_COLOR = { low: "var(--success-color, #43a047)", medium: "var(--warning-color, #ffa000)", high: "#fb8c00", critical: "var(--error-color, #db4437)", info: "var(--secondary-text-color)" };
-const SEV_TXT = {
-  en: { low: "low", medium: "medium", high: "high", critical: "critical", info: "info" },
-  de: { low: "niedrig", medium: "mittel", high: "hoch", critical: "kritisch", info: "Info" },
+const SEV_TXT = { en: { low: "low", medium: "medium", high: "high", critical: "critical", info: "info" },
+                  de: { low: "niedrig", medium: "mittel", high: "hoch", critical: "kritisch", info: "Info" } };
+const C = {
+  blue: "var(--info-color, #42a5f5)", purple: "#ab47bc", amber: "var(--warning-color, #ffa000)", orange: "#fb8c00",
+  red: "var(--error-color, #db4437)", green: "var(--success-color, #43a047)", grey: "var(--secondary-text-color)",
 };
+const SEV_COLOR = { low: C.green, medium: C.amber, high: C.orange, critical: C.red, info: C.grey };
+const DIR_COLOR = { inbound: C.amber, internal: C.orange, outbound: C.red, unknown: C.grey };
+const DIR_ICON = { inbound: "mdi:arrow-down-bold", internal: "mdi:swap-horizontal-bold", outbound: "mdi:arrow-up-bold" };
+const TYPE_COLOR = { ips: C.amber, malware: C.red, bot: C.purple };
+const ACT_COLOR = { blocked: C.green, detected: C.amber, allowed: C.red };
+const PALETTE = ["#42a5f5", "#26a69a", "#ab47bc", "#ffa000", "#ef5350", "#7e57c2", "#66bb6a", "#8d6e63", "#78909c"];
 const BLADE = {
   fw: "Firewall", vpn_remote_access: "Remote Access VPN", vpn_site_to_site: "Site-to-Site VPN", ips: "IPS",
   anti_virus: "Anti-Virus", url_filtering: "URL Filtering", anti_spam: "Anti-Spam", qos: "QoS",
@@ -71,22 +81,57 @@ const BLADE = {
   threat_emulation: "Threat Emulation",
 };
 
-const DIR_COLOR = { inbound: "var(--warning-color, #ffa000)", internal: "var(--error-color, #db4437)", outbound: "var(--error-color, #db4437)" };
-const DIR_ICON = { inbound: "mdi:arrow-down-bold", internal: "mdi:swap-horizontal-bold", outbound: "mdi:arrow-up-bold" };
+/* Icons for well-known apps, sites and categories (Material Design Icons shipped with HA – no downloads).
+ * First match wins; unknown entries get a neutral icon per list type. */
+const ICONS = [
+  [/youtube|google video/i, "mdi:youtube"], [/netflix/i, "mdi:netflix"], [/facebook|meta\b/i, "mdi:facebook"],
+  [/instagram/i, "mdi:instagram"], [/whatsapp/i, "mdi:whatsapp"], [/spotify/i, "mdi:spotify"], [/twitch/i, "mdi:twitch"],
+  [/steam/i, "mdi:steam"], [/playstation|psn/i, "mdi:sony-playstation"], [/xbox/i, "mdi:microsoft-xbox"],
+  [/microsoft 365|office|outlook|teams/i, "mdi:microsoft-office"], [/microsoft|windows|azure|bing/i, "mdi:microsoft"],
+  [/icloud|apple|facetime|itunes/i, "mdi:apple"], [/amazon web|aws|cloudfront/i, "mdi:aws"], [/amazon|prime/i, "mdi:shopping"],
+  [/googleapis|googleusercontent|gstatic|google/i, "mdi:google"], [/dropbox/i, "mdi:dropbox"], [/github/i, "mdi:github"],
+  [/linkedin/i, "mdi:linkedin"], [/zoom|webex|conferenc/i, "mdi:video"], [/tiktok|capcut/i, "mdi:music-note"],
+  [/quic|https?|tls|ssl|tcp|udp|dns|ntp|stun|icmp|protocol/i, "mdi:lan"], [/vpn|openvpn|wireguard|ipsec/i, "mdi:vpn"],
+  [/torrent|p2p|file shar/i, "mdi:file-swap"], [/update|download|content-storage|cdn|content deliver/i, "mdi:cloud-download"],
+  [/game|gaming/i, "mdi:gamepad-variant"], [/video|stream|media|entertain/i, "mdi:play-box"], [/music|audio|radio/i, "mdi:music"],
+  [/social/i, "mdi:account-group"], [/shop/i, "mdi:cart"], [/business|econom|finance|bank/i, "mdi:briefcase"],
+  [/search|portal/i, "mdi:magnify"], [/mail/i, "mdi:email"], [/news/i, "mdi:newspaper"], [/sex|adult/i, "mdi:eye-off"],
+  [/low risk/i, "mdi:shield-check"], [/medium risk/i, "mdi:shield-alert-outline"], [/high risk|critical risk/i, "mdi:shield-alert"],
+  [/computers|internet/i, "mdi:laptop"], [/unknown/i, "mdi:help-circle-outline"],
+];
+const ICON_DEFAULT = { apps: "mdi:application-outline", sites: "mdi:web", categories: "mdi:shape-outline" };
+const iconFor = (name, kind) => (ICONS.find(([re]) => re.test(name || "")) || [null, ICON_DEFAULT[kind] || "mdi:circle-small"])[1];
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+/** 1-2-5 step for a nice axis. */
+function niceStep(max, ticks = 4) {
+  if (!(max > 0)) return 1;
+  const raw = max / ticks;
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f = raw / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
+}
+
+/** Event type of a stored syslog detection. */
+function evType(h) {
+  if (h.kind === "ips_attack") return "ips";
+  return /bot/i.test(h.product || "") ? "bot" : "malware";
+}
+function evAction(h) {
+  const a = String(h.action || "").toLowerCase();
+  if (["reject", "drop", "prevent", "block", "blocked"].includes(a)) return "blocked";
+  if (["accept", "allow", "allowed"].includes(a)) return "allowed";
+  return "detected";
+}
 
 class CheckpointSparkCard extends HTMLElement {
   static getConfigForm() {
     return {
       schema: [
         { name: "device_id", selector: { device: { integration: DOMAIN } } },
-        {
-          name: "period", default: "daily",
-          selector: { select: { mode: "dropdown", options: [
-            { value: "daily", label: "24 h" }, { value: "weekly", label: "7 d" }, { value: "monthly", label: "30 d" },
-            { value: "hourly", label: "1 h" }] } },
-        },
+        { name: "period", default: "daily", selector: { select: { mode: "dropdown", options: [
+          { value: "hourly", label: "1 h" }, { value: "daily", label: "24 h" }, { value: "weekly", label: "7 d" }, { value: "monthly", label: "30 d" }] } } },
       ],
     };
   }
@@ -98,7 +143,10 @@ class CheckpointSparkCard extends HTMLElement {
 
   setConfig(config) {
     this._config = { period: "daily", resolvers: [], names: {}, ...config };
-    this._tab = this._tab || "threats";
+    this._st = this._st || {
+      period: this._config.period, tab: "traffic", list: "apps", metric: "volume",
+      type: "all", dir: "all", open: new Set(),
+    };
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
     this._render();
   }
@@ -106,7 +154,6 @@ class CheckpointSparkCard extends HTMLElement {
   set hass(hass) {
     const first = !this._hass;
     this._hass = hass;
-    // re-render only when one of our entities changed (cheap check)
     const sig = this._signature();
     if (first || sig !== this._sig) {
       this._sig = sig;
@@ -114,24 +161,23 @@ class CheckpointSparkCard extends HTMLElement {
     }
   }
 
-  getCardSize() { return 8; }
+  getCardSize() { return 12; }
   getGridOptions() { return { columns: 12, min_columns: 6 }; }
 
   /* ------------------------------------------------------------ data -- */
-  get _t() { return T[(this._hass?.locale?.language || this._hass?.language || "en").startsWith("de") ? "de" : "en"]; }
   get _lang() { return (this._hass?.locale?.language || this._hass?.language || "en").startsWith("de") ? "de" : "en"; }
+  get _t() { return T[this._lang]; }
+  get _loc() { return this._hass?.locale?.language || undefined; }
 
   _entities() {
     const hass = this._hass;
-    if (!hass) return {};
     let dev = this._config.device_id;
     const all = Object.values(hass.entities || {}).filter((e) => e.platform === DOMAIN);
     if (!dev && all.length) dev = all.find((e) => e.device_id)?.device_id;
     const map = {};
     for (const e of all) {
       if (dev && e.device_id !== dev) continue;
-      const key = e.translation_key || e.entity_id.split(".")[1];
-      map[key] = e.entity_id;
+      map[e.translation_key || e.entity_id.split(".")[1]] = e.entity_id;
     }
     this._device = dev;
     return map;
@@ -139,53 +185,50 @@ class CheckpointSparkCard extends HTMLElement {
 
   _signature() {
     const ids = Object.values(this._entities());
-    return ids.map((id) => {
-      const s = this._hass.states[id];
-      return s ? s.last_updated : "";
-    }).join("|") + "|" + (this._hass.locale?.language || "");
+    return ids.map((id) => this._hass.states[id]?.last_updated || "").join("|") + "|" + (this._hass.locale?.language || "");
   }
 
   _s(key) { const id = this._map[key]; return id ? this._hass.states[id] : undefined; }
   _v(key) { const s = this._s(key); const n = s ? parseFloat(s.state) : NaN; return isNaN(n) ? null : n; }
-  _a(key, attr) { const s = this._s(key); return (s && s.attributes && s.attributes[attr]) ?? null; }
-  _p(metric, period) { return `${period || this._config.period}_${metric}`; }
+  _a(key, attr) { return this._s(key)?.attributes?.[attr] ?? null; }
+  _pk(metric) { return `${this._st.period}_${metric}`; }
 
-  _num(n, digits = 0) {
-    if (n == null) return "–";
-    return Number(n).toLocaleString(this._hass?.locale?.language || undefined, { maximumFractionDigits: digits });
+  _num(n, d = 0) { return n == null ? "–" : Number(n).toLocaleString(this._loc, { maximumFractionDigits: d }); }
+  _bytes(b) {
+    if (b == null) return "–";
+    const u = [["TB", 1e12], ["GB", 1e9], ["MB", 1e6], ["KB", 1e3]].find(([, f]) => b >= f) || ["B", 1];
+    const v = b / u[1];
+    return `${this._num(v, v < 10 ? 2 : v < 100 ? 1 : 0)} ${u[0]}`;
   }
-  _gb(bytes) {
-    if (bytes == null) return "–";
-    const gb = bytes / 1e9;
-    return `${this._num(gb, gb < 10 ? 2 : 1)} GB`;
+  _gbState(key) { const v = this._v(key); return v == null ? null : v * 1e9; } // sensors are in GB
+  _time(iso, withDate = true) {
+    const d = new Date(iso);
+    if (isNaN(d)) return "–";
+    return d.toLocaleString(this._loc, withDate ? { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" } : { hour: "2-digit", minute: "2-digit" });
+  }
+  _pill(text, color, icon) {
+    return `<span class="pill" style="--c:${color}">${icon ? `<ha-icon icon="${icon}"></ha-icon>` : ""}${esc(text)}</span>`;
   }
   _sev(s) {
     const k = SEV[String(s ?? "").toLowerCase()];
-    if (!k) return s ? esc(s) : "–";
-    return `<span class="pill" style="--c:${SEV_COLOR[k]}">${esc(SEV_TXT[this._lang][k])}</span>`;
+    return k ? this._pill(SEV_TXT[this._lang][k], SEV_COLOR[k]) : (s ? esc(s) : "–");
   }
-  _dir(d) {
-    if (!DIR_ICON[d]) return "";
-    return `<span class="pill dir" style="--c:${DIR_COLOR[d]}"><ha-icon icon="${DIR_ICON[d]}"></ha-icon>${esc(this._t[d])}</span>`;
-  }
-  _dirCounts(period = "1d") {
-    const all = this._a("detections_30d", "ips_by_direction");
-    return all ? all[period] || null : null;
-  }
-  _time(iso) {
-    const d = new Date(iso);
-    if (isNaN(d)) return "–";
-    return d.toLocaleString(this._hass?.locale?.language || undefined, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-  }
-  /** Device name for an IP (any device_tracker with attribute ip) + resolver hint. */
+  _dir(d) { return DIR_ICON[d] ? this._pill(this._t[d], DIR_COLOR[d], DIR_ICON[d]) : ""; }
   _who(ip) {
     if (!ip) return "–";
-    const t = Object.values(this._hass.states).find((s) => s.entity_id.startsWith("device_tracker.") && s.attributes.ip === ip);
-    let name = (this._config.names || {})[ip] || (t ? (t.attributes.friendly_name || t.attributes.host_name || "") : "");
+    const tr = Object.values(this._hass.states).find((s) => s.entity_id.startsWith("device_tracker.") && s.attributes.ip === ip);
+    let name = (this._config.names || {})[ip] || (tr ? tr.attributes.friendly_name || tr.attributes.host_name || "" : "");
     const w = name.split(" ");
     if (w.length % 2 === 0 && w.slice(0, w.length / 2).join(" ") === w.slice(w.length / 2).join(" ")) name = w.slice(0, w.length / 2).join(" ");
-    const res = (this._config.resolvers || []).includes(ip) ? ` <span class="muted">· ${esc(this._t.resolver)}</span>` : "";
-    return (name ? `${esc(name)} <span class="muted">${esc(ip)}</span>` : esc(ip)) + res;
+    const res = (this._config.resolvers || []).includes(ip) ? ` <span class="muted small">· ${esc(this._t.resolver)}</span>` : "";
+    return (name ? `${esc(name)} <span class="muted small">${esc(ip)}</span>` : esc(ip)) + res;
+  }
+
+  /** Stored syslog detections within the selected period, newest first. */
+  _events() {
+    const hist = this._a("detections_30d", "history") || [];
+    const cutoff = Date.now() - PERIOD_HOURS[this._st.period] * 3600e3;
+    return hist.filter((h) => new Date(h.time).getTime() >= cutoff);
   }
 
   /* ---------------------------------------------------------- render -- */
@@ -193,55 +236,48 @@ class CheckpointSparkCard extends HTMLElement {
     if (!this.shadowRoot || !this._config) return;
     if (!this._hass) { this.shadowRoot.innerHTML = ""; return; }
     this._map = this._entities();
-    const t = this._t;
+    const t = this._t, st = this._st;
     if (!Object.keys(this._map).length) {
-      this.shadowRoot.innerHTML = `<ha-card><div class="empty">${esc(t.noDevice)}</div></ha-card>`;
+      this.shadowRoot.innerHTML = `<style>${CSS}</style><ha-card><div class="pad muted">${esc(t.noDevice)}</div></ha-card>`;
       return;
     }
     const dev = this._device && this._hass.devices ? this._hass.devices[this._device] : null;
     const title = this._config.title || (dev && (dev.name_by_user || dev.name)) || t.title;
-    const period = this._config.period;
-    const periodLabel = { hourly: "1 h", daily: t.d24, weekly: t.d7, monthly: t.d30 }[period] || period;
-    const kpis = [
-      ["traffic", "mdi:swap-vertical-bold", t.traffic, this._gb(this._v(this._p("traffic")) != null ? this._v(this._p("traffic")) * 1e9 : null), "var(--info-color, #42a5f5)"],
-      ["sessions", "mdi:lan-connect", t.sessions, this._num(this._v(this._p("sessions"))), "#ab47bc"],
-      ["ips", "mdi:shield-alert", t.ips, this._num(this._v(this._p("ips_events"))), this._warn(this._v(this._p("ips_events")), "#ffa000"),
-        (() => { const c = this._dirCounts("1d"); return c ? `${c.inbound} ${t.inS} · ${c.internal} ${t.intS} · ${c.outbound} ${t.outS}` : ""; })()],
-      ["blocked", "mdi:virus", t.blocked, this._num(this._v(this._p("virus_incidents"))), this._warn(this._v(this._p("virus_incidents")), "#ffa000")],
-      ["bots", "mdi:robot-angry", t.bots, this._num(this._v(this._p("bot_incidents"))), this._warn(this._v(this._p("bot_incidents")), "var(--error-color, #db4437)")],
-      ["infected", "mdi:laptop-off", t.infected, this._num(this._v(this._p("infected_hosts"))), this._warn(this._v(this._p("infected_hosts")), "var(--error-color, #db4437)")],
-    ];
-    const tabs = [["threats", t.threats], ["hosts", t.hosts], ["apps", t.apps], ["realtime", t.realtime], ["system", t.system]];
-    this.shadowRoot.innerHTML = `
-      <style>${CSS}</style>
+    const body = st.tab === "traffic" ? this._traffic() : st.tab === "tp" ? this._threats() : this._system();
+    this.shadowRoot.innerHTML = `<style>${CSS}</style>
       <ha-card>
         <div class="head">
-          <div class="title"><ha-icon icon="mdi:shield-half-full"></ha-icon><span>${esc(title)}</span>
-            <span class="muted small">${esc(periodLabel)}</span></div>
+          <div class="title"><ha-icon icon="mdi:shield-half-full"></ha-icon><span>${esc(title)}</span></div>
           <div class="chips">${this._chips()}</div>
         </div>
-        <div class="kpis">${kpis.map(([k, icon, label, val, color, sub]) => `
-          <button class="kpi" data-kpi="${k}" style="--c:${color}">
-            <ha-icon icon="${icon}"></ha-icon><div><div class="val">${val}</div><div class="lbl">${esc(label)}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</div>
-          </button>`).join("")}</div>
-        <div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${this._tab === k ? "on" : ""}" data-tab="${k}">${esc(l)}</button>`).join("")}</div>
-        <div class="body">${this._tabContent(this._tab)}</div>
-      </ha-card>
-      <div class="dlg" hidden><div class="dlg-box"><div class="dlg-head"><span class="dlg-title"></span>
-        <button class="x" aria-label="${esc(t.close)}"><ha-icon icon="mdi:close"></ha-icon></button></div><div class="dlg-body"></div></div></div>`;
-    const root = this.shadowRoot;
-    root.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { this._tab = b.dataset.tab; this._render(); }));
-    root.querySelectorAll(".kpi").forEach((b) => b.addEventListener("click", () => this._open(b.dataset.kpi)));
-    root.querySelectorAll("[data-det]").forEach((b) => b.addEventListener("click", () => this._openDetection(Number(b.dataset.det))));
-    root.querySelector(".x").addEventListener("click", () => this._close());
-    root.querySelector(".dlg").addEventListener("click", (e) => { if (e.target.classList.contains("dlg")) this._close(); });
+        <div class="seg">${PERIODS.map((p) => `<button class="${st.period === p ? "on" : ""}" data-period="${p}">${esc(t["p_" + p])}</button>`).join("")}</div>
+        ${this._summary()}
+        <div class="tabs">${[["traffic", t.traffic, "mdi:swap-vertical-bold"], ["tp", t.tp, "mdi:shield-alert"], ["system", t.system, "mdi:chip"]]
+          .map(([k, l, i]) => `<button class="tab ${st.tab === k ? "on" : ""}" data-tab="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`).join("")}</div>
+        <div class="body">${body}</div>
+      </ha-card>`;
+    this._bind();
   }
 
-  _warn(v, color) { return v == null ? "var(--secondary-text-color)" : v > 0 ? color : "var(--success-color, #43a047)"; }
+  _bind() {
+    const root = this.shadowRoot, st = this._st;
+    const on = (sel, fn) => root.querySelectorAll(sel).forEach((el) => el.addEventListener("click", () => fn(el)));
+    on("[data-period]", (el) => { st.period = el.dataset.period; st.open.clear(); this._render(); });
+    on("[data-tab]", (el) => { st.tab = el.dataset.tab; this._render(); });
+    on("[data-list]", (el) => { st.list = el.dataset.list; this._render(); });
+    on("[data-metric]", (el) => { st.metric = el.dataset.metric; this._render(); });
+    on("[data-type]", (el) => { st.type = el.dataset.type; st.open.clear(); this._render(); });
+    on("[data-dir]", (el) => { st.dir = el.dataset.dir; st.open.clear(); this._render(); });
+    on("[data-ev]", (el) => {
+      const k = el.dataset.ev;
+      st.open.has(k) ? st.open.delete(k) : st.open.add(k);
+      this._render();
+    });
+  }
 
   _chips() {
     const t = this._t;
-    const chip = (ok, text, icon) => `<span class="chip" style="--c:${ok ? "var(--success-color, #43a047)" : "var(--error-color, #db4437)"}"><ha-icon icon="${icon}"></ha-icon>${esc(text)}</span>`;
+    const chip = (ok, text, icon) => this._pill(text, ok ? C.green : C.red, icon);
     const out = [];
     const inet = this._s("internet");
     if (inet) out.push(chip(inet.state === "on", `${t.internet} ${inet.state === "on" ? t.online : t.offline}`, "mdi:web"));
@@ -249,227 +285,340 @@ class CheckpointSparkCard extends HTMLElement {
     if (thr) out.push(chip(thr.state !== "on", thr.state === "on" ? t.threat : t.noInfection, "mdi:shield-check"));
     const blades = this._a("active_blades", "blades") || {};
     const bf = this._s("blade_failure");
-    const n = Object.values(blades).filter(Boolean).length;
-    if (Object.keys(blades).length) out.push(chip(!bf || bf.state !== "on", bf && bf.state === "on" ? `${t.bladeOff}: ${(bf.attributes.disabled || []).join(", ")}` : `${n}/${Object.keys(blades).length} ${t.blades}`, "mdi:puzzle"));
+    if (Object.keys(blades).length) {
+      const n = Object.values(blades).filter(Boolean).length;
+      out.push(chip(!bf || bf.state !== "on", bf?.state === "on" ? `${t.bladeOff}: ${(bf.attributes.disabled || []).join(", ")}` : `${n}/${Object.keys(blades).length} ${t.blades}`, "mdi:puzzle"));
+    }
     const hw = this._s("hardware_problem");
     if (hw) out.push(chip(hw.state !== "on", hw.state === "on" ? t.hwProblem : t.hwOk, "mdi:chip"));
     return out.join("");
   }
 
-  _table(head, rows, empty) {
-    if (!rows.length) return `<div class="muted pad">${esc(empty || this._t.none)}</div>`;
-    return `<table><tr>${head.map((h, i) => `<th class="${i ? "r" : ""}">${esc(h)}</th>`).join("")}</tr>${rows.join("")}</table>`;
-  }
-  _bar(v, max, color) {
-    return `<div class="bar"><div style="width:${Math.max(2, Math.round((100 * v) / (max || 1)))}%;background:${color}"></div></div>`;
+  /** Summary strip like page 1 of the gateway's PDF report – display only. */
+  _summary() {
+    const t = this._t;
+    const total = this._gbState(this._pk("traffic"));
+    const apps = this._a(this._pk("traffic"), "top_apps_by_bandwidth") || [];
+    const sites = this._a(this._pk("traffic"), "top_sites_by_bandwidth") || [];
+    const pct = (b) => (total && b ? ` · ${this._num((100 * b) / total, 0)} %` : "");
+    const val = (key) => (this._s(this._pk(key)) ? this._num(this._v(this._pk(key))) : "–");
+    const warn = (key, color) => { const v = this._v(this._pk(key)); return v == null ? C.grey : v > 0 ? color : C.green; };
+    const cell = (label, value, color, sub) => `<div class="sum"><div class="v" style="color:${color}">${value}</div><div class="l">${esc(label)}</div>${sub ? `<div class="s">${sub}</div>` : ""}</div>`;
+    return `<div class="sums">
+      ${cell(t.volume, this._bytes(total), C.blue, `↓ ${this._bytes(this._gbState(this._pk("download")))} · ↑ ${this._bytes(this._gbState(this._pk("upload")))}`)}
+      ${cell(t.sessions, val("sessions"), C.purple, apps[0] ? `${esc(t.topApp)}: ${esc(apps[0].name)}${pct(apps[0].bytes)}` : "")}
+      ${cell(t.ips, val("ips_events"), warn("ips_events", C.amber), this._s(this._pk("ips_events")) ? "" : esc(t.noReport))}
+      ${cell(t.blocked, val("virus_incidents"), warn("virus_incidents", C.amber), sites[0] ? `${esc(t.topSite)}: ${esc(sites[0].name)}` : "")}
+      ${cell(t.bots, val("bot_incidents"), warn("bot_incidents", C.red))}
+      ${cell(t.infected, val("infected_hosts"), warn("infected_hosts", C.red))}
+    </div>`;
   }
 
-  _tabContent(tab) {
+  /* --------------------------------------------------------- traffic -- */
+  _traffic() {
+    const t = this._t, st = this._st;
+    const tk = this._pk("traffic"), sk = this._pk("sessions");
+    const lists = {
+      apps: [tk, "top_apps_by_bandwidth", sk, "top_apps_by_sessions"],
+      sites: [tk, "top_sites_by_bandwidth", sk, "top_sites_by_sessions"],
+      categories: [tk, "top_categories_by_bandwidth", sk, "top_categories_by_sessions"],
+    }[st.list];
+    const items = (st.metric === "volume" ? this._a(lists[0], lists[1]) : this._a(lists[2], lists[3])) || [];
+    const key = st.metric === "volume" ? "bytes" : "sessions";
+    const max = Math.max(1, ...items.map((i) => i[key] || 0));
+    const color = { apps: PALETTE[0], sites: PALETTE[2], categories: PALETTE[1] }[st.list];
+    const rows = items.slice(0, 10).map((i) => `<tr><td class="ic"><ha-icon icon="${iconFor(i.name + " " + (i.category || ""), st.list)}"></ha-icon></td>
+        <td class="n">${esc(i.name)}${i.category ? ` <span class="muted small">${esc(i.category)}</span>` : ""}${this._bar(i[key] || 0, max, color)}</td>
+        <td class="r">${st.metric === "volume" ? this._bytes(i.bytes) : this._num(i.sessions)}</td>
+        <td class="r muted small">${st.metric === "volume" ? `↓ ${this._bytes(i.down_bytes)}<br>↑ ${this._bytes(i.up_bytes)}` : this._bytes(i.bytes)}</td></tr>`);
+    const risky = this._a(this._pk("high_risk_sessions"), "top_high_risk_apps");
+    return `<h4>${esc(t.history)}</h4>${this._barChart()}
+      <h4>${esc(t.flow)}: ↓/↑ → ${esc(t.categories)}</h4>${this._trafficSankey()}
+      <div class="row">
+        <div class="seg sm">${[["apps", t.apps], ["sites", t.sites], ["categories", t.categories]].map(([k, l]) => `<button class="${st.list === k ? "on" : ""}" data-list="${k}">${esc(l)}</button>`).join("")}</div>
+        <div class="seg sm">${[["volume", t.byVolume], ["sessions", t.bySessions]].map(([k, l]) => `<button class="${st.metric === k ? "on" : ""}" data-metric="${k}">${esc(l)}</button>`).join("")}</div>
+      </div>
+      ${this._table(["", t.name, st.metric === "volume" ? t.volume : t.sessions, ""], rows)}
+      ${risky ? `<h4>${esc(t.highRisk)}</h4>` + this._table(["", t.name, t.sessions, ""], risky.map((r) => `<tr><td class="ic"><ha-icon icon="${iconFor(r.name + " " + (r.category || ""), "apps")}"></ha-icon></td><td class="n">${esc(r.name)}${r.category ? ` <span class="muted small">${esc(r.category)}</span>` : ""}</td><td class="r">${this._num(r.sessions)}</td><td class="r">${this._sev(r.risk)}</td></tr>`)) : ""}`;
+  }
+
+  _bar(v, max, color) { return `<div class="bar"><div style="width:${Math.max(2, Math.round((100 * v) / (max || 1)))}%;background:${color}"></div></div>`; }
+
+  _table(head, rows, empty) {
+    if (!rows.length) return `<div class="muted pad">${esc(empty || this._t.none)}</div>`;
+    return `<table><tr>${head.map((h, i) => `<th class="${i > 1 ? "r" : ""}">${esc(h)}</th>`).join("")}</tr>${rows.join("")}</table>`;
+  }
+
+  /** Stacked bars (download/upload) with a soft grid and 1-2-5 steps. */
+  _barChart() {
+    const hist = [...(this._a(this._pk("traffic"), "bandwidth_history") || [])].reverse();
+    if (!hist.length) return `<div class="muted pad">${esc(this._t.noData)}</div>`;
+    const W = 600, H = 150, L = 50, B = 20, top = 8;
+    const totals = hist.map((h) => (h.down_bytes || 0) + (h.up_bytes || 0));
+    const step = niceStep(Math.max(...totals, 1));
+    const ymax = Math.ceil(Math.max(...totals, 1) / step) * step;
+    const y = (v) => top + (H - top - B) * (1 - v / ymax);
+    const bw = (W - L) / hist.length;
+    let svg = "";
+    for (let g = 0; g <= ymax * 1.0001; g += step) {
+      svg += `<line x1="${L}" x2="${W}" y1="${y(g)}" y2="${y(g)}" class="grid"/><text x="${L - 6}" y="${y(g) + 3}" class="ax" text-anchor="end">${esc(this._bytes(g))}</text>`;
+    }
+    const every = Math.ceil(hist.length / 6);
+    const withDate = this._st.period === "weekly" || this._st.period === "monthly";
+    hist.forEach((h, i) => {
+      const x = L + i * bw + bw * 0.15, w = bw * 0.7;
+      const d = h.down_bytes || 0, u = h.up_bytes || 0;
+      svg += `<rect x="${x}" y="${y(d)}" width="${w}" height="${Math.max(0, y(0) - y(d))}" fill="${PALETTE[0]}" rx="1"><title>${esc(this._time(h.time))} ↓ ${esc(this._bytes(d))}</title></rect>`;
+      svg += `<rect x="${x}" y="${y(d + u)}" width="${w}" height="${Math.max(0, y(d) - y(d + u))}" fill="${PALETTE[1]}" rx="1"><title>${esc(this._time(h.time))} ↑ ${esc(this._bytes(u))}</title></rect>`;
+      if (i % every === 0) {
+        const lab = withDate ? new Date(h.time).toLocaleDateString(this._loc, { day: "2-digit", month: "2-digit" }) : this._time(h.time, false);
+        svg += `<text x="${x + w / 2}" y="${H - 5}" class="ax" text-anchor="middle">${esc(lab)}</text>`;
+      }
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" class="chart" preserveAspectRatio="none">${svg}</svg>
+      <div class="legend">${this._pill(this._t.down, PALETTE[0])} ${this._pill(this._t.up, PALETTE[1])}</div>`;
+  }
+
+  /** Sankey: Download / Upload → categories (top 7 + other). */
+  _trafficSankey() {
+    const cats = this._a(this._pk("traffic"), "top_categories_by_bandwidth") || [];
+    if (!cats.length) return `<div class="muted pad">${esc(this._t.noData)}</div>`;
+    const top = cats.slice(0, 7), rest = cats.slice(7);
+    const right = top.map((c, i) => ({ id: "c" + i, label: c.name, color: PALETTE[(i + 2) % PALETTE.length], down: c.down_bytes || 0, up: c.up_bytes || 0 }));
+    if (rest.length) right.push({ id: "co", label: this._t.other, color: PALETTE[8], down: rest.reduce((s, c) => s + (c.down_bytes || 0), 0), up: rest.reduce((s, c) => s + (c.up_bytes || 0), 0) });
+    const links = [];
+    right.forEach((r) => { links.push({ s: "down", t: r.id, v: r.down }); links.push({ s: "up", t: r.id, v: r.up }); });
+    return this._sankey([[{ id: "down", label: this._t.down, color: PALETTE[0] }, { id: "up", label: this._t.up, color: PALETTE[1] }], right], links, (v) => this._bytes(v));
+  }
+
+  /**
+   * Minimal sankey: columns of nodes, node height ∝ max(in, out), links as bezier bands.
+   * cols = [[{id,label,color}], …], links = [{s,t,v}]
+   */
+  _sankey(cols, links, fmt) {
+    links = links.filter((l) => l.v > 0);
+    if (!links.length) return `<div class="muted pad">${esc(this._t.noData)}</div>`;
+    const W = 600, padY = 6, nodeW = 10, gap = 8;
+    const val = {};
+    for (const l of links) { val[l.s] = val[l.s] || { i: 0, o: 0 }; val[l.t] = val[l.t] || { i: 0, o: 0 }; val[l.s].o += l.v; val[l.t].i += l.v; }
+    const used = cols.map((c) => c.filter((n) => val[n.id]));
+    const colTotal = used.map((c) => c.reduce((s, n) => s + Math.max(val[n.id].i, val[n.id].o), 0));
+    const maxN = Math.max(...used.map((c) => c.length));
+    const H = Math.max(140, maxN * 26 + 20);
+    const scale = Math.min(...used.map((c, i) => (c.length ? (H - 2 * padY - gap * (c.length - 1)) / (colTotal[i] || 1) : Infinity)));
+    const pos = {};
+    const x0 = 130, x1 = W - 175;
+    used.forEach((c, ci) => {
+      const x = x0 + ((x1 - x0) * ci) / Math.max(1, cols.length - 1);
+      const h = c.reduce((s, n) => s + Math.max(val[n.id].i, val[n.id].o) * scale, 0) + gap * Math.max(0, c.length - 1);
+      let yy = (H - h) / 2;
+      for (const n of c) {
+        const nh = Math.max(2, Math.max(val[n.id].i, val[n.id].o) * scale);
+        pos[n.id] = { x, y: yy, h: nh, oy: yy, iy: yy, n, ci };
+        yy += nh + gap;
+      }
+    });
+    let svg = "";
+    for (const l of links) {
+      const a = pos[l.s], b = pos[l.t];
+      if (!a || !b) continue;
+      const th = Math.max(1, l.v * scale);
+      const xa = a.x + nodeW, xb = b.x, ya = a.oy + th / 2, yb = b.iy + th / 2, mx = (xa + xb) / 2;
+      svg += `<path d="M${xa},${ya} C${mx},${ya} ${mx},${yb} ${xb},${yb}" stroke="${b.n.color}" stroke-width="${th}" fill="none" class="link"><title>${esc(a.n.label)} → ${esc(b.n.label)}: ${esc(fmt(l.v))}</title></path>`;
+      a.oy += th; b.iy += th;
+    }
+    for (const p of Object.values(pos)) {
+      const v = Math.max(val[p.n.id].i, val[p.n.id].o);
+      const last = p.ci === cols.length - 1;
+      const label = p.n.label.length > 24 ? p.n.label.slice(0, 23) + "…" : p.n.label;
+      svg += `<rect x="${p.x}" y="${p.y}" width="${nodeW}" height="${p.h}" fill="${p.n.color}" rx="2"><title>${esc(p.n.label)}: ${esc(fmt(v))}</title></rect>`;
+      svg += `<text x="${last ? p.x + nodeW + 6 : p.x - 6}" y="${p.y + p.h / 2 + 4}" class="lab" text-anchor="${last ? "start" : "end"}">${esc(label)} <tspan class="sub">${esc(fmt(v))}</tspan></text>`;
+    }
+    return `<svg viewBox="0 0 ${W} ${H}" class="sankey">${svg}</svg>`;
+  }
+
+  /* ------------------------------------------------ threat prevention -- */
+  _threats() {
+    const t = this._t, st = this._st;
+    const hasSyslog = !!this._s("syslog_messages") || !!this._s("detections_30d");
+    const evAll = this._events();
+    const ev = evAll.filter((h) => (st.type === "all" || evType(h) === st.type) && (st.dir === "all" || (h.direction || "unknown") === st.dir));
+    const count = (pred) => evAll.filter(pred).length;
+    const typeBtn = (k, label, color, n) => `<button class="${st.type === k ? "on" : ""}" data-type="${k}" style="--c:${color}">${esc(label)}<span class="cnt">${n}</span></button>`;
+    const dirBtn = (k, label, n) => `<button class="${st.dir === k ? "on" : ""}" data-dir="${k}" style="--c:${DIR_COLOR[k] || C.grey}">${DIR_ICON[k] ? `<ha-icon icon="${DIR_ICON[k]}"></ha-icon>` : ""}${esc(label)}<span class="cnt">${n}</span></button>`;
+    const filters = `<div class="filters">
+      <span class="fl">${esc(t.type)}</span><div class="seg sm chips-seg">
+        ${typeBtn("all", t.all, C.grey, evAll.length)}${typeBtn("ips", t.ips, TYPE_COLOR.ips, count((h) => evType(h) === "ips"))}
+        ${typeBtn("malware", t.blocked, TYPE_COLOR.malware, count((h) => evType(h) === "malware"))}${typeBtn("bot", t.bots, TYPE_COLOR.bot, count((h) => evType(h) === "bot"))}</div>
+      <span class="fl">${esc(t.dir)}</span><div class="seg sm chips-seg">
+        ${dirBtn("all", t.all, evAll.length)}${["inbound", "internal", "outbound"].map((d) => dirBtn(d, t[d], count((h) => h.direction === d))).join("")}</div>
+    </div>`;
+    const events = !hasSyslog ? `<div class="hint">${esc(t.noSyslog)}</div>`
+      : `<h4>${esc(t.flow)}: ${esc(t.dir)} → ${esc(t.type)} → ${esc(t.action)}</h4>${this._threatSankey(ev)}
+         <h4>${esc(t.events)} · ${ev.length}</h4>${this._eventTable(ev)}`;
+    return filters + events + this._reportThreats();
+  }
+
+  _threatSankey(ev) {
     const t = this._t;
-    if (tab === "threats") {
-      const prot = this._a(this._p("ips_events", "weekly"), "top_protections") || [];
-      const mal = this._a(this._p("virus_incidents", "weekly"), "top_malwares") || [];
-      return `<h4>${esc(t.topProt)} · ${esc(t.d7)}</h4>` +
-        this._table([t.name, t.hits, t.severity], prot.slice(0, 10).map((i) => `<tr><td class="n">${esc(i.name)}${i.cve ? `<div class="muted small">${esc(i.cve.split(",")[0])}</div>` : ""}</td><td class="r">${this._num(i.sessions)}</td><td class="r">${this._sev(i.severity)}</td></tr>`)) +
-        `<h4>${esc(t.topMal)} · ${esc(t.d7)}</h4>` +
-        this._table([t.name, t.incidents, t.severity], mal.slice(0, 10).map((i) => `<tr><td class="n">${esc(i.name)}</td><td class="r">${this._num(i.incidents)}</td><td class="r">${this._sev(i.severity)}</td></tr>`)) +
-        `<div class="muted small pad">${esc(t.blockedHint)}</div>`;
+    const dirs = ["inbound", "internal", "outbound", "unknown"].map((d) => ({ id: "d_" + d, label: t[d], color: DIR_COLOR[d] }));
+    const types = [["ips", t.ips], ["malware", t.blocked], ["bot", t.bots]].map(([k, l]) => ({ id: "t_" + k, label: l, color: TYPE_COLOR[k] }));
+    const acts = [["blocked", t.blockedA], ["detected", t.detectedA], ["allowed", t.allowedA]].map(([k, l]) => ({ id: "a_" + k, label: l, color: ACT_COLOR[k] }));
+    const agg = {};
+    for (const h of ev) {
+      const d = "d_" + (h.direction || "unknown"), ty = "t_" + evType(h), a = "a_" + evAction(h);
+      agg[d + ">" + ty] = (agg[d + ">" + ty] || 0) + 1;
+      agg[ty + ">" + a] = (agg[ty + ">" + a] || 0) + 1;
     }
-    if (tab === "hosts") {
-      const hosts = this._a(this._p("infected_hosts", "weekly"), "top_infected_hosts") || [];
+    const links = Object.entries(agg).map(([k, v]) => { const [s, tt] = k.split(">"); return { s, t: tt, v }; });
+    return this._sankey([dirs, types, acts], links, (v) => this._num(v));
+  }
+
+  _eventTable(ev) {
+    const t = this._t, st = this._st;
+    if (!ev.length) return `<div class="muted pad">${esc(t.noEvents)}</div>`;
+    const rows = ev.slice(0, 50).map((h) => {
+      const key = h.time + "|" + (h.name || "") + "|" + (h.src || "") + "|" + (h.dst || "");
+      const open = st.open.has(key);
+      const cves = String(h.cve || "").split(",").map((c) => c.trim()).filter((c) => /^CVE-\d+-\d+$/.test(c));
+      const type = evType(h);
+      const detail = open ? `<tr class="det"><td colspan="4">
+          <div class="kv"><span>${esc(t.src)}</span><b>${this._who(h.src)}</b></div>
+          <div class="kv"><span>${esc(t.dst)}</span><b>${this._who(h.dst)}</b></div>
+          <div class="kv"><span>${esc(t.dir)}</span><b>${this._dir(h.direction) || "–"}</b></div>
+          <div class="kv"><span>${esc(t.action)}</span><b>${esc(h.action || "–")}</b></div>
+          ${h.attack && h.attack !== h.name ? `<div class="kv"><span>${esc(t.type)}</span><b>${esc(h.attack)}</b></div>` : ""}
+          ${h.product ? `<div class="kv"><span>Blade</span><b>${esc(h.product)}</b></div>` : ""}
+          ${cves.length ? `<div class="kv"><span>CVE</span><b>${cves.map((c) => `<a href="https://nvd.nist.gov/vuln/detail/${c}" target="_blank" rel="noopener">${c}</a>`).join(" · ")}</b></div>` : ""}
+          ${h.resource ? `<div class="kv"><span>${esc(t.requested)}</span></div><code>${esc(h.resource)}</code>` : ""}
+          ${type === "malware" ? `<div class="muted small pad">${esc(t.dnsHint)}</div>` : ""}
+        </td></tr>` : "";
+      return `<tr class="click ${open ? "open" : ""}" data-ev="${esc(key)}">
+          <td class="nw">${esc(this._time(h.time))}</td>
+          <td class="n">${this._pill(type === "ips" ? t.ips : type === "bot" ? t.bots : t.blocked, TYPE_COLOR[type])} ${esc(h.name || h.attack || "–")}
+            <div class="small">${this._dir(h.direction)} <span class="muted">${this._who(h.src)}</span></div></td>
+          <td class="r">${this._sev(h.severity)}</td><td class="r chev">${open ? "▾" : "▸"}</td></tr>${detail}`;
+    });
+    return `<table><tr><th>${esc(t.time)}</th><th>${esc(t.name)}</th><th class="r">${esc(t.sev)}</th><th></th></tr>${rows.join("")}</table>`;
+  }
+
+  /** Report totals (no time/source) for the selected period and type filter. */
+  _reportThreats() {
+    const t = this._t, st = this._st;
+    let out = `<h4 class="sep">${esc(t.reportPart)}</h4>`;
+    if (st.type === "all" || st.type === "ips") {
+      const prot = this._a(this._pk("ips_events"), "top_protections");
+      out += `<h4>${esc(t.protections)}</h4>` + (prot ? this._table(["", t.name, t.hits, t.sev], prot.slice(0, 10).map((i) =>
+        `<tr><td class="ic"><ha-icon icon="mdi:shield-alert-outline"></ha-icon></td><td class="n">${esc(i.name)}${i.cve ? `<div class="muted small">${esc(i.cve.split(",")[0])}</div>` : ""}</td><td class="r">${this._num(i.sessions)}</td><td class="r">${this._sev(i.severity)}</td></tr>`)) : `<div class="muted pad">${esc(t.noReport)}</div>`);
+    }
+    if (st.type === "all" || st.type === "malware") {
+      const mal = this._a(this._pk("virus_incidents"), "top_malwares") || [];
+      out += `<h4>${esc(t.malware)}</h4>` + this._table(["", t.name, t.incidents, t.sev], mal.slice(0, 10).map((i) =>
+        `<tr><td class="ic"><ha-icon icon="mdi:virus-outline"></ha-icon></td><td class="n">${esc(i.name)}</td><td class="r">${this._num(i.incidents)}</td><td class="r">${this._sev(i.severity)}</td></tr>`)) +
+        `<div class="muted small pad">${esc(t.dnsHint)}</div>`;
+    }
+    if (st.type !== "ips") {
+      const hosts = this._a(this._pk("infected_hosts"), "top_infected_hosts") || [];
       const max = Math.max(1, ...hosts.map((h) => h.count || 0));
-      return `<h4>${esc(t.hostsInc)} · ${esc(t.d7)}</h4>` +
-        this._table([t.host, t.incidents], hosts.map((h) => `<tr><td class="n">${this._who(h.name)}${this._bar(h.count || 0, max, "var(--error-color, #db4437)")}</td><td class="r">${this._num(h.count)}</td></tr>`));
+      out += `<h4>${esc(t.hosts)}</h4>` + this._table(["", t.host, t.incidents], hosts.map((h) =>
+        `<tr><td class="ic"><ha-icon icon="mdi:laptop"></ha-icon></td><td class="n">${this._who(h.name)}${this._bar(h.count || 0, max, C.red)}</td><td class="r">${this._num(h.count)}</td></tr>`));
+      const inf = [[t.infHosts, "infected_hosts"], [t.newInf, "new_infected_hosts"], [t.critInf, "critical_infected_hosts"], [t.servers, "infected_servers"]];
+      out += `<div class="grid4">${inf.map(([l, k]) => { const v = this._v(this._pk(k)); return `<div class="mini"><b style="color:${v ? C.red : C.green}">${this._num(v)}</b><span>${esc(l)}</span></div>`; }).join("")}</div>`;
     }
-    if (tab === "apps") {
-      const apps = this._a(this._p("traffic", "daily"), "top_apps_by_bandwidth") || [];
-      const sites = this._a(this._p("traffic", "daily"), "top_sites_by_bandwidth") || [];
-      const ma = Math.max(1, ...apps.map((a) => a.bytes || 0)), ms = Math.max(1, ...sites.map((a) => a.bytes || 0));
-      return `<h4>${esc(t.app)} · ${esc(t.d24)}</h4>` +
-        this._table([t.app, t.volume], apps.slice(0, 10).map((a) => `<tr><td class="n">${esc(a.name)}${this._bar(a.bytes || 0, ma, "var(--info-color, #42a5f5)")}</td><td class="r">${this._gb(a.bytes)}</td></tr>`)) +
-        `<h4>${esc(t.site)} · ${esc(t.d24)}</h4>` +
-        this._table([t.site, t.volume], sites.slice(0, 10).map((a) => `<tr><td class="n">${esc(a.name)}${this._bar(a.bytes || 0, ms, "#ab47bc")}</td><td class="r">${this._gb(a.bytes)}</td></tr>`));
-    }
-    if (tab === "realtime") {
-      if (!this._s("syslog_messages")) return `<div class="muted pad">${esc(t.syslogOff)}</div>`;
-      const hist = this._a("detections_30d", "history") || [];
-      const drops = this._s("firewall_drops_1h");
-      const src = (drops && drops.attributes.top_sources) || [];
-      const sc = this._s("scanned_hosts"), dt = this._s("detected_threats");
-      const triple = (s) => (s ? `${s.attributes.hour ?? "–"} / ${esc(s.state)} / ${s.attributes.week ?? "–"}` : "–");
-      const ih = this._s("ips_events_1h");
-      const split = ih ? ` <span class="muted">(${ih.attributes.last_hour_inbound ?? 0} ${esc(t.inS)} · ${ih.attributes.last_hour_internal ?? 0} ${esc(t.intS)} · ${ih.attributes.last_hour_outbound ?? 0} ${esc(t.outS)})</span>` : "";
-      return `<div class="kv"><span>${esc(t.ips)} / h</span><b>${this._num(this._v("ips_events_1h"))}${split}</b></div>
-        <div class="kv"><span>${esc(t.drops)} / h</span><b>${this._num(this._v("firewall_drops_1h"))}</b></div>
-        <div class="kv"><span>${esc(t.scanned)}</span><b>${triple(sc)}</b></div>
-        <div class="kv"><span>${esc(t.unique)}</span><b>${triple(dt)}</b></div>
-        <h4>${esc(t.lastDet)}</h4>` +
-        this._table([t.name, t.time, t.severity], hist.slice(0, 15).map((h, i) => `<tr class="click" data-det="${i}"><td class="n">${esc(h.name || h.attack || "–")}<div class="muted small">${this._dir(h.direction)} ${this._who(h.src)}</div></td><td class="r">${esc(this._time(h.time))}</td><td class="r">${this._sev(h.severity)} ›</td></tr>`)) +
-        `<h4>${esc(t.topSrc)}</h4>` +
-        this._table([t.source, t.hits], src.map((s) => `<tr><td class="n">${this._who(s.name)}</td><td class="r">${this._num(s.count)}</td></tr>`));
-    }
-    // system
+    return out;
+  }
+
+  /* ---------------------------------------------------------- system -- */
+  _system() {
+    const t = this._t;
     const blades = this._a("active_blades", "blades") || {};
     const inet = this._s("internet_connected_since");
     const cpu = this._v("cpu_temperature"), ddr = this._v("ddr_temperature");
     const exp = this._s("next_contract_expiry");
     const kv = (k, v) => `<div class="kv"><span>${esc(k)}</span><b>${v}</b></div>`;
+    const expired = exp?.attributes?.expired_contracts || [];
     return `<div class="blades">${Object.entries(blades).map(([k, on]) => `<span class="${on ? "" : "off"}"><ha-icon icon="${on ? "mdi:check-circle" : "mdi:minus-circle-outline"}"></ha-icon>${esc(BLADE[k] || k)}</span>`).join("")}</div>` +
-      kv(t.internet, inet && inet.state && !isNaN(new Date(inet.state)) ? `${esc(t.since)} ${esc(this._time(inet.state))}` : "–") +
+      kv(t.internet, inet && !isNaN(new Date(inet.state)) ? `${esc(t.since)} ${esc(this._time(inet.state))}` : "–") +
       kv(t.vpn, this._num(this._v("vpn_tunnels_up"))) +
       kv(t.cpu, `${cpu == null ? "–" : Math.round(cpu) + " °C"} / ${ddr == null ? "–" : Math.round(ddr) + " °C"}`) +
       kv(t.mem, this._v("memory_used") == null ? "–" : `${this._num(this._v("memory_used"))} MB`) +
       kv(t.emmc, this._v("emmc_wear") == null ? "–" : `≤ ${this._num(this._v("emmc_wear"))} %`) +
-      kv(t.contracts, exp && !isNaN(new Date(exp.state)) ? `${esc(new Date(exp.state).toLocaleDateString(this._hass.locale?.language))}${(exp.attributes.expired_contracts || []).length ? ` <span class="muted">· ${(exp.attributes.expired_contracts || []).length} ${esc(t.expired)}</span>` : ""}` : "–") +
+      kv(t.contracts, exp && !isNaN(new Date(exp.state)) ? `${esc(new Date(exp.state).toLocaleDateString(this._loc))}${expired.length ? ` <span class="muted">· ${expired.length} ${esc(t.expired)}</span>` : ""}` : "–") +
       kv(t.firmware, esc(this._s("firmware")?.state || "–")) +
-      kv(t.report, esc(this._time(this._s(this._p("report_time"))?.state)));
+      kv(t.report, esc(this._time(this._s(this._pk("report_time"))?.state)));
   }
-
-  /* ---------------------------------------------------------- dialog -- */
-  _open(kpi) {
-    const t = this._t;
-    const per = [["daily", t.d24], ["weekly", t.d7], ["monthly", t.d30]];
-    const counts = (rows) => this._table(["", ...per.map((p) => p[1])],
-      rows.map(([label, metric]) => `<tr><td>${esc(label)}</td>${per.map(([p]) => `<td class="r">${this._num(this._v(`${p}_${metric}`))}</td>`).join("")}</tr>`));
-    let title = "", body = "";
-    switch (kpi) {
-      case "traffic": {
-        title = t.traffic;
-        body = this._table(["", ...per.map((p) => p[1])], [["traffic", t.traffic], ["download", "↓"], ["upload", "↑"]].map(([m, l]) =>
-          `<tr><td>${esc(l)}</td>${per.map(([p]) => `<td class="r">${this._gb(this._v(`${p}_${m}`) != null ? this._v(`${p}_${m}`) * 1e9 : null)}</td>`).join("")}</tr>`)) +
-          this._tabContent("apps");
-        break;
-      }
-      case "sessions": {
-        title = t.sessions;
-        const apps = this._a(this._p("sessions", "daily"), "top_apps_by_sessions") || [];
-        body = counts([[t.sessions, "sessions"], [t.highRisk, "high_risk_sessions"]]) +
-          `<h4>${esc(t.app)} · ${esc(t.d24)}</h4>` +
-          this._table([t.app, t.sessions], apps.slice(0, 10).map((a) => `<tr><td class="n">${esc(a.name)}${a.category ? `<div class="muted small">${esc(a.category)}</div>` : ""}</td><td class="r">${this._num(a.sessions)}</td></tr>`));
-        break;
-      }
-      case "ips": {
-        title = t.ips;
-        const prot = this._a(this._p("ips_events", "daily"), "top_protections") || [];
-        const dirs = ["1d", "7d", "30d"].map((p) => this._dirCounts(p));
-        const dirTable = dirs[0] ? `<h4>${esc(t.direction)} (Syslog)</h4>` + this._table(["", t.d24, t.d7, t.d30],
-          ["inbound", "internal", "outbound"].map((d) => `<tr><td>${this._dir(d)}</td>${dirs.map((c) => `<td class="r">${this._num(c ? c[d] : null)}</td>`).join("")}</tr>`)) +
-          `<div class="muted small pad">${esc(t.dirHint)}</div>` : "";
-        body = counts([[t.ips, "ips_events"]]) + dirTable + `<h4>${esc(t.topProt)} · ${esc(t.d24)}</h4>` +
-          this._table([t.name, t.hits, t.severity], prot.map((i) => `<tr><td class="n">${esc(i.name)}${i.cve ? `<div class="muted small">${i.cve.split(",").map((c) => c.trim()).filter((c) => /^CVE-\d+-\d+$/.test(c)).slice(0, 3).map((c) => `<a href="https://nvd.nist.gov/vuln/detail/${c}" target="_blank" rel="noopener">${c}</a>`).join(" · ")}</div>` : ""}</td><td class="r">${this._num(i.sessions)}</td><td class="r">${this._sev(i.severity)}</td></tr>`)) +
-          this._detList("ips_attack");
-        break;
-      }
-      case "blocked": {
-        title = t.blocked;
-        body = `<div class="hint">${esc(t.blockedHint)}</div>` + counts([[t.blocked, "virus_incidents"]]) +
-          this._detList("malware_detected") + this._tabContent("threats").split(`<h4>${esc(t.topMal)}`).slice(1).map((x) => `<h4>${esc(t.topMal)}` + x).join("") +
-          this._tabContent("hosts");
-        break;
-      }
-      case "bots": title = t.bots; body = counts([[t.bots, "bot_incidents"]]); break;
-      default: {
-        title = t.infected;
-        body = counts([[t.infected, "infected_hosts"], [t.newInf, "new_infected_hosts"], [t.critInf, "critical_infected_hosts"], [t.servers, "infected_servers"]]) + this._tabContent("hosts");
-      }
-    }
-    this._show(title, body);
-  }
-
-  _detList(kind) {
-    const t = this._t;
-    if (!this._s("detections_30d")) return "";
-    const hist = (this._a("detections_30d", "history") || []).map((h, i) => [h, i]).filter(([h]) => h.kind === kind);
-    return `<h4>${esc(t.lastDet)}</h4>` + this._table([t.time, t.name, t.source], hist.slice(0, 15).map(([h, i]) =>
-      `<tr class="click" data-det="${i}"><td>${esc(this._time(h.time))}</td><td class="n">${esc(h.name || h.attack || "–")}<div class="small">${this._dir(h.direction)}</div></td><td class="r">${this._who(h.src)} ›</td></tr>`));
-  }
-
-  _openDetection(i) {
-    const t = this._t;
-    const h = (this._a("detections_30d", "history") || [])[i];
-    if (!h) return;
-    const kv = (k, v) => `<div class="kv"><span>${esc(k)}</span><b>${v}</b></div>`;
-    const cves = String(h.cve || "").split(",").map((c) => c.trim()).filter((c) => /^CVE-\d+-\d+$/.test(c));
-    this._show(h.name || h.attack || "–",
-      kv(t.time, esc(new Date(h.time).toLocaleString(this._hass.locale?.language))) +
-      kv(t.severity, this._sev(h.severity)) + kv(t.action, esc(h.action || "–")) +
-      (h.direction ? kv(t.direction, this._dir(h.direction)) : "") +
-      kv(t.source, this._who(h.src)) + kv(t.target, this._who(h.dst)) +
-      (h.product ? kv("Blade", esc(h.product)) : "") +
-      (cves.length ? kv("CVE", cves.map((c) => `<a href="https://nvd.nist.gov/vuln/detail/${c}" target="_blank" rel="noopener">${c}</a>`).join(" · ")) : "") +
-      (h.resource ? `<div class="kv"><span>${esc(t.requested)}</span></div><code>${esc(h.resource)}</code>` : ""));
-  }
-
-  _show(title, body) {
-    const d = this.shadowRoot.querySelector(".dlg");
-    d.querySelector(".dlg-title").textContent = title;
-    d.querySelector(".dlg-body").innerHTML = body;
-    d.querySelectorAll("[data-det]").forEach((b) => b.addEventListener("click", () => this._openDetection(Number(b.dataset.det))));
-    d.hidden = false;
-  }
-  _close() { this.shadowRoot.querySelector(".dlg").hidden = true; }
 }
 
 const CSS = `
   :host { display: block; }
-  ha-card { padding: 12px 12px 8px; overflow: hidden; }
-  .empty, .pad { padding: 12px 4px; }
+  ha-card { padding: 12px 14px 10px; overflow: hidden; }
+  .pad { padding: 8px 2px; }
   .muted { color: var(--secondary-text-color); }
   .small { font-size: 11px; }
   .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
   .title { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 500; }
   .title ha-icon { color: var(--primary-color); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 12px; font-size: 12px;
-          color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); }
-  .chip ha-icon { --mdc-icon-size: 14px; }
-  .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 12px 0 8px; }
-  .kpi { display: flex; align-items: center; gap: 8px; padding: 8px; border: none; border-radius: 12px; cursor: pointer;
-         background: var(--secondary-background-color, rgba(127,127,127,.08)); color: var(--primary-text-color); text-align: left; font: inherit; }
-  .kpi:hover { filter: brightness(1.1); }
-  .kpi ha-icon { color: var(--c); flex: none; }
-  .kpi .val { font-size: 20px; font-weight: 500; color: var(--c); line-height: 1.15; white-space: nowrap; }
-  .kpi .lbl { font-size: 11px; color: var(--secondary-text-color); text-transform: uppercase; letter-spacing: .4px; }
-  .kpi .sub { font-size: 11px; color: var(--secondary-text-color); white-space: nowrap; }
-  .pill.dir ha-icon { --mdc-icon-size: 12px; margin-right: 2px; vertical-align: -1px; }
-  .tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--divider-color); margin-top: 4px; }
-  .tab { background: none; border: none; padding: 8px 10px; cursor: pointer; color: var(--secondary-text-color); font: inherit; font-size: 13px;
-         border-bottom: 2px solid transparent; white-space: nowrap; }
+  .pill { display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px; border-radius: 10px; font-size: 11px; line-height: 18px;
+          color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); white-space: nowrap; }
+  .pill ha-icon { --mdc-icon-size: 12px; }
+  .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--secondary-background-color, rgba(127,127,127,.1)); margin: 10px 0 4px; flex-wrap: wrap; }
+  .seg button { border: none; background: none; padding: 5px 12px; border-radius: 8px; cursor: pointer; color: var(--secondary-text-color);
+                font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+  .seg button.on { background: var(--card-background-color, var(--ha-card-background, #fff)); color: var(--primary-text-color); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .seg.sm { margin: 4px 0; } .seg.sm button { padding: 3px 9px; font-size: 12px; }
+  .seg button ha-icon { --mdc-icon-size: 14px; }
+  .chips-seg button.on { color: var(--c, var(--primary-text-color)); }
+  .cnt { font-size: 10px; padding: 0 5px; border-radius: 8px; background: rgba(127,127,127,.18); margin-left: 2px; }
+  .sums { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin: 8px 0 6px; }
+  .sum { padding: 8px 10px; border-radius: 12px; background: var(--secondary-background-color, rgba(127,127,127,.08)); min-width: 0; }
+  .sum .v { font-size: 20px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
+  .sum .l { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--secondary-text-color); }
+  .sum .s { font-size: 11px; color: var(--secondary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--divider-color); margin-top: 6px; }
+  .tab { background: none; border: none; padding: 8px 12px; cursor: pointer; color: var(--secondary-text-color); font: inherit; font-size: 14px;
+         border-bottom: 2px solid transparent; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .tab ha-icon { --mdc-icon-size: 18px; }
   .tab.on { color: var(--primary-color); border-bottom-color: var(--primary-color); }
   .body { padding: 4px 0; }
-  h4 { margin: 12px 0 4px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; color: var(--secondary-text-color); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin-top: 8px; }
+  .filters { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 10px; margin: 8px 0; }
+  .fl { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--secondary-text-color); }
+  h4 { margin: 14px 0 4px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; color: var(--secondary-text-color); }
+  h4.sep { margin-top: 20px; padding-top: 10px; border-top: 1px dashed var(--divider-color); }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th { text-align: left; font-size: 11px; font-weight: 500; color: var(--secondary-text-color); padding: 4px 6px; }
-  td { padding: 5px 6px; border-top: 1px solid var(--divider-color); vertical-align: top; }
-  .r { text-align: right; white-space: nowrap; }
+  td { padding: 6px; border-top: 1px solid var(--divider-color); vertical-align: top; }
+  td.ic { width: 22px; padding-right: 0; color: var(--secondary-text-color); } td.ic ha-icon { --mdc-icon-size: 18px; }
+  .r { text-align: right; white-space: nowrap; } .nw { white-space: nowrap; }
   td.n { width: 100%; word-break: break-word; }
-  tr.click { cursor: pointer; }
-  tr.click:hover td { background: var(--secondary-background-color, rgba(127,127,127,.08)); }
-  .bar { height: 4px; border-radius: 2px; margin-top: 3px; background: var(--divider-color); }
+  tr.click { cursor: pointer; } tr.click:hover td { background: var(--secondary-background-color, rgba(127,127,127,.08)); }
+  tr.open td { background: var(--secondary-background-color, rgba(127,127,127,.08)); }
+  tr.det td { border-top: none; background: var(--secondary-background-color, rgba(127,127,127,.06)); padding: 2px 12px 10px; }
+  .chev { color: var(--secondary-text-color); width: 1%; }
+  .bar { height: 4px; border-radius: 2px; margin-top: 4px; background: var(--divider-color); }
   .bar > div { height: 4px; border-radius: 2px; }
-  .pill { display: inline-block; padding: 0 8px; border-radius: 9px; font-size: 11px; line-height: 18px;
-          color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
-  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 6px 4px; border-top: 1px solid var(--divider-color); font-size: 14px; }
-  .kv span { color: var(--secondary-text-color); }
-  .kv b { font-weight: 500; text-align: right; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 6px 2px; border-top: 1px solid var(--divider-color); font-size: 14px; }
+  .kv span { color: var(--secondary-text-color); } .kv b { font-weight: 500; text-align: right; }
   .blades { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; font-size: 13px; margin: 8px 0; }
   .blades span { display: flex; align-items: center; gap: 6px; }
   .blades ha-icon { --mdc-icon-size: 16px; color: var(--success-color, #43a047); }
-  .blades .off { color: var(--secondary-text-color); }
-  .blades .off ha-icon { color: var(--disabled-text-color, #999); }
-  .hint { padding: 8px 10px; border-radius: 8px; font-size: 13px; background: color-mix(in srgb, var(--warning-color, #ffa000) 12%, transparent); }
-  code { display: block; padding: 6px; border-radius: 6px; font-size: 12px; word-break: break-all;
-         background: var(--secondary-background-color, rgba(127,127,127,.1)); }
+  .blades .off { color: var(--secondary-text-color); } .blades .off ha-icon { color: var(--disabled-text-color, #999); }
+  .hint { padding: 10px 12px; border-radius: 10px; font-size: 13px; margin: 8px 0; background: color-mix(in srgb, var(--warning-color, #ffa000) 12%, transparent); }
+  code { display: block; padding: 6px; border-radius: 6px; font-size: 12px; word-break: break-all; background: rgba(127,127,127,.12); }
   a { color: var(--primary-color); }
-  .dlg { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
-         background: rgba(0,0,0,.5); padding: 16px; }
-  .dlg[hidden] { display: none; }
-  .dlg-box { width: min(640px, 100%); max-height: 85vh; overflow: auto; border-radius: 16px; padding: 12px 16px 16px;
-             background: var(--card-background-color, var(--ha-card-background, #1c1c1c)); color: var(--primary-text-color);
-             box-shadow: 0 8px 32px rgba(0,0,0,.4); }
-  .dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 18px; font-weight: 500; }
-  .x { background: none; border: none; color: var(--secondary-text-color); cursor: pointer; padding: 4px; }
-  @media (max-width: 450px) { .kpi .val { font-size: 17px; } .kpis { gap: 4px; } }
+  svg.chart { width: 100%; height: 150px; display: block; }
+  svg.sankey { width: 100%; height: auto; display: block; }
+  .grid { stroke: var(--divider-color); stroke-width: 1; opacity: .6; }
+  .ax { fill: var(--secondary-text-color); font-size: 10px; }
+  .lab { fill: var(--primary-text-color); font-size: 11px; } .lab .sub { fill: var(--secondary-text-color); }
+  .link { opacity: .35; } .link:hover { opacity: .65; }
+  .legend { display: flex; gap: 6px; margin-top: 2px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+  .mini { display: flex; flex-direction: column; padding: 6px 8px; border-radius: 10px; background: var(--secondary-background-color, rgba(127,127,127,.08)); }
+  .mini b { font-size: 18px; font-weight: 500; } .mini span { font-size: 11px; color: var(--secondary-text-color); }
+  @media (max-width: 700px) { .sums { grid-template-columns: repeat(3, minmax(0, 1fr)); } .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 420px) { .sum .v { font-size: 17px; } .filters { grid-template-columns: 1fr; } }
 `;
 
 if (!customElements.get("checkpoint-spark-card")) {
@@ -478,7 +627,7 @@ if (!customElements.get("checkpoint-spark-card")) {
   window.customCards.push({
     type: "checkpoint-spark-card",
     name: "Check Point Quantum Spark",
-    description: "Firewall overview: key figures, threats, hosts, real-time detections and gateway health.",
+    description: "Interactive event viewer: traffic and threat prevention per period, flows, events with details, gateway health.",
     preview: true,
     documentationURL: "https://github.com/msiegmeth/checkpoint-spark-ha",
   });
