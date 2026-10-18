@@ -212,7 +212,8 @@ class CheckpointSparkCard extends HTMLElement {
   }
 
   getCardSize() { return 12; }
-  getGridOptions() { return { columns: 12, min_columns: 6 }; }
+  // full width in sections views (event viewer needs the space); users can still resize it
+  getGridOptions() { return { columns: "full", min_columns: 6 }; }
 
   /* ------------------------------------------------------------ data -- */
   get _lang() { return (this._hass?.locale?.language || this._hass?.language || "en").startsWith("de") ? "de" : "en"; }
