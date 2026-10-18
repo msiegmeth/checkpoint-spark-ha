@@ -31,6 +31,10 @@ CONF_SYSLOG_SENDERS: Final = "syslog_senders"
 CONF_SYSLOG_FORWARD: Final = "syslog_forward"
 CONF_SYSLOG_RETENTION: Final = "syslog_retention_days"
 DEFAULT_SYSLOG_RETENTION: Final = 90
+CONF_TELEMETRY_ENABLED: Final = "telemetry_enabled"
+CONF_TELEMETRY_USERNAME: Final = "telemetry_username"
+CONF_TELEMETRY_PASSWORD: Final = "telemetry_password"
+DEFAULT_TELEMETRY_USERNAME: Final = "spark"
 
 EVENT_THREAT: Final = f"{DOMAIN}_threat"
 # Same threat is reported at most once per this many hours

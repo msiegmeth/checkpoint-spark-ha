@@ -200,6 +200,7 @@ the same attack and source. Sources listed in *Ignore sources* never fire events
 | `checkpoint_spark.get_report` | `report_type` | `{report_type, fetched, report}` (decoded report) |
 | `checkpoint_spark.show_command` | `command` (must start with `show`) | `{command, output}` |
 | `checkpoint_spark.detections` | `days` (1–365), `kind` | `{count, detections}` (stored, newest first) |
+| `checkpoint_spark.telemetry_metrics` | `prefix`, `limit` | `{series, requests, metrics, rows}` (OpenTelemetry, newest value per series) |
 | `checkpoint_spark.syslog_messages` | `limit` (1–200, default 50) | `{received, dropped, messages}` (newest first) |
 
 All actions accept an optional `config_entry_id` when several gateways are configured.

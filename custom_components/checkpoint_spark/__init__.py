@@ -9,6 +9,7 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_integration
 
 import logging
+import socket
 from pathlib import Path
 
 from homeassistant.const import CONF_HOST
@@ -20,6 +21,7 @@ from .const import (
     CONF_SYSLOG_PORT,
     CONF_SYSLOG_RETENTION,
     CONF_SYSLOG_SENDERS,
+    CONF_TELEMETRY_ENABLED,
     DEFAULT_SYSLOG_PORT,
     DEFAULT_SYSLOG_RETENTION,
     DOMAIN,
@@ -27,6 +29,7 @@ from .const import (
 from .coordinator import SparkConfigEntry, SparkCoordinator
 from .services import async_setup_services
 from .syslog import SyslogReceiver, split_hosts
+from .telemetry import TelemetryStore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,7 +45,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_setup_services(hass)
     # Dashboard card shipped with the integration (no separate resource needed).
     # Skipped without HTTP/frontend (e.g. in tests).
-    if getattr(hass, "http", None) is None or "frontend" not in hass.config.components:
+    if getattr(hass, "http", None) is None:
+        return True
+    from .telemetry_view import TelemetryView  # noqa: PLC0415
+
+    hass.http.register_view(TelemetryView())
+    if "frontend" not in hass.config.components:
         return True
     from homeassistant.components.frontend import add_extra_js_url  # noqa: PLC0415
     from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
@@ -62,6 +70,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: SparkConfigEntry) -> boo
     coordinator = SparkCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
+    if entry.options.get(CONF_TELEMETRY_ENABLED):
+        coordinator.telemetry = TelemetryStore()
+        try:
+            infos = await hass.loop.getaddrinfo(entry.data[CONF_HOST], None, family=socket.AF_INET)
+            coordinator.telemetry_allowed = {i[4][0] for i in infos}
+        except OSError:
+            coordinator.telemetry_allowed = {entry.data[CONF_HOST]}
     if entry.options.get(CONF_SYSLOG_ENABLED):
         opts = entry.options
         receiver = SyslogReceiver(

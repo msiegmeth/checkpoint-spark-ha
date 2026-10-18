@@ -33,6 +33,10 @@ from .const import (
     CONF_SYSLOG_IGNORE,
     CONF_SYSLOG_RETENTION,
     CONF_SYSLOG_SENDERS,
+    CONF_TELEMETRY_ENABLED,
+    CONF_TELEMETRY_PASSWORD,
+    CONF_TELEMETRY_USERNAME,
+    DEFAULT_TELEMETRY_USERNAME,
     DEFAULT_SYSLOG_RETENTION,
     CONF_SYSLOG_PORT,
     DEFAULT_SYSLOG_PORT,
@@ -178,6 +182,8 @@ class SparkOptionsFlow(OptionsFlowWithReload):
                     user_input[CONF_SYSLOG_FORWARD] = user_input[CONF_SYSLOG_FORWARD].strip()
                     if user_input[CONF_SYSLOG_FORWARD] and parse_target(user_input[CONF_SYSLOG_FORWARD]) is None:
                         errors[CONF_SYSLOG_FORWARD] = "invalid_forward"
+                if user_input.get(CONF_TELEMETRY_ENABLED) and len(user_input.get(CONF_TELEMETRY_PASSWORD, "")) < 12:
+                    errors[CONF_TELEMETRY_PASSWORD] = "telemetry_password"
                 if CONF_SYSLOG_RETENTION in user_input:
                     user_input[CONF_SYSLOG_RETENTION] = int(user_input[CONF_SYSLOG_RETENTION])
                 for rt in REPORT_TYPES:
@@ -265,6 +271,18 @@ class SparkOptionsFlow(OptionsFlowWithReload):
                 min=1, max=365, step=1, mode=selector.NumberSelectorMode.BOX, unit_of_measurement="d"
             )
         )
+        fields[
+            vol.Optional(CONF_TELEMETRY_ENABLED, default=options.get(CONF_TELEMETRY_ENABLED, False))
+        ] = bool
+        fields[
+            vol.Optional(
+                CONF_TELEMETRY_USERNAME,
+                default=options.get(CONF_TELEMETRY_USERNAME, DEFAULT_TELEMETRY_USERNAME),
+            )
+        ] = str
+        fields[
+            vol.Optional(CONF_TELEMETRY_PASSWORD, default=options.get(CONF_TELEMETRY_PASSWORD, ""))
+        ] = selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD))
         return self.async_show_form(
             step_id="init", data_schema=vol.Schema(fields), errors=errors
         )

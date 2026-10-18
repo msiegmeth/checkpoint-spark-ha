@@ -59,3 +59,19 @@ detections:
       selector:
         select:
           options: [ips_attack, malware_detected]
+telemetry_metrics:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: checkpoint_spark
+    prefix:
+      example: cpu
+      selector:
+        text:
+    limit:
+      default: 200
+      selector:
+        number:
+          min: 1
+          max: 2000

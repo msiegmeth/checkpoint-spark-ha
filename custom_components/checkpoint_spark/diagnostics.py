@@ -13,7 +13,8 @@ from homeassistant.core import HomeAssistant
 from .const import CONF_REDACT_DIAGNOSTICS
 from .coordinator import SparkConfigEntry
 
-TO_REDACT = {CONF_USERNAME, CONF_PASSWORD, "user", "password", "sid", "serial_number", "ipv4_address"}
+TO_REDACT = {CONF_USERNAME, CONF_PASSWORD, "user", "password", "sid", "serial_number", "ipv4_address",
+             "telemetry_password"}
 # additionally removed with the "redact network data" option
 NETWORK_KEYS = {"macAddress", "gatewayName", "host", "url", "configuration_url"}
 
@@ -44,7 +45,7 @@ async def async_get_config_entry_diagnostics(
     result = {
         "entry": {
             "data": async_redact_data(dict(entry.data), redact),
-            "options": dict(entry.options),
+            "options": async_redact_data(dict(entry.options), redact),
         },
         "login_info": async_redact_data(data.login_info, redact),
         "fetched": {k: v.isoformat() for k, v in data.fetched.items()},
@@ -59,5 +60,10 @@ async def async_get_config_entry_diagnostics(
             "products": dict(rx.product_counts),
             "messages": list(rx.messages)[-20:],
             "by_product": {p: list(m)[-10:] for p, m in rx.by_product.items()},
+        }
+    if (tm := entry.runtime_data.telemetry) is not None:
+        result["telemetry"] = {
+            "series": len(tm.series), "requests": tm.requests, "rejected": tm.rejected,
+            "metrics": tm.metric_names(), "sample": tm.query("", 50),
         }
     return _anonymise(result) if network else result

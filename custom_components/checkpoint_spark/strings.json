@@ -48,7 +48,10 @@
           "syslog_ignore_sources": "Ignore sources (syslog)",
           "syslog_senders": "Additional senders (syslog relay)",
           "syslog_forward": "Forward syslog to",
-          "syslog_retention_days": "Keep detections"
+          "syslog_retention_days": "Keep detections",
+          "telemetry_enabled": "Receive OpenTelemetry (preview)",
+          "telemetry_username": "OpenTelemetry user",
+          "telemetry_password": "OpenTelemetry password"
         },
         "description": "Each report type is fetched at its own interval. Generating reports costs CPU on the gateway – keep long periods (weekly, monthly) at hours.",
         "data_description": {
@@ -58,13 +61,16 @@
           "syslog_ignore_sources": "Comma-separated IPs whose IPS/malware detections do not raise events, e.g. your own vulnerability scanner.",
           "syslog_senders": "Comma-separated IPs/host names of log servers that forward the gateway's syslog (e.g. Synology Log Center, rsyslog). Leave empty if the gateway sends directly.",
           "syslog_forward": "Optional host:port (UDP) that receives every accepted message unchanged, e.g. an archive on your NAS.",
-          "syslog_retention_days": "How long IPS and malware detections are kept (survive restarts). Raw messages are never stored."
+          "syslog_retention_days": "How long IPS and malware detections are kept (survive restarts). Raw messages are never stored.",
+          "telemetry_enabled": "Accepts the gateway's Skyline/OpenTelemetry export (Prometheus remote write) at /api/checkpoint_spark/telemetry – only from the gateway IP, with the user/password below (basic auth). Enter the URL, user and password on the gateway under Logs & Monitoring → OpenTelemetry.",
+          "telemetry_password": "At least 12 characters."
         }
       }
     },
     "error": {
       "no_report_type": "Select at least one report type",
-      "invalid_forward": "Use host:port, e.g. 192.168.1.2:514"
+      "invalid_forward": "Use host:port, e.g. 192.168.1.2:514",
+      "telemetry_password": "Password of at least 12 characters required"
     }
   },
   "selector": {
@@ -322,6 +328,9 @@
       },
       "detections_30d": {
         "name": "Detections (30 days)"
+      },
+      "telemetry_series": {
+        "name": "Telemetry series"
       }
     },
     "binary_sensor": {
@@ -413,6 +422,24 @@
           "description": "ips_attack or malware_detected"
         }
       }
+    },
+    "telemetry_metrics": {
+      "name": "Telemetry metrics",
+      "description": "Returns the received OpenTelemetry metrics (newest value per series).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Only needed with several gateways."
+        },
+        "prefix": {
+          "name": "Prefix",
+          "description": "Only series starting with this text"
+        },
+        "limit": {
+          "name": "Limit",
+          "description": "Max. rows"
+        }
+      }
     }
   },
   "exceptions": {
@@ -427,6 +454,9 @@
     },
     "syslog_disabled": {
       "message": "Syslog reception is not enabled in the options."
+    },
+    "telemetry_disabled": {
+      "message": "OpenTelemetry reception is not enabled in the options."
     }
   }
 }

@@ -118,6 +118,26 @@ def async_setup_services(hass: HomeAssistant) -> None:
                            vol.Optional("kind"): vol.In(["ips_attack", "malware_detected"])}),
         supports_response=SupportsResponse.ONLY,
     )
+    async def telemetry_metrics(call: ServiceCall) -> ServiceResponse:
+        coordinator = _coordinator(hass, call)
+        store = coordinator.telemetry
+        if store is None:
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="telemetry_disabled")
+        return {
+            "series": len(store.series),
+            "requests": store.requests,
+            "metrics": store.metric_names(),
+            "rows": store.query(call.data.get("prefix", ""), call.data["limit"]),
+        }
+
+    hass.services.async_register(
+        DOMAIN,
+        "telemetry_metrics",
+        telemetry_metrics,
+        schema=vol.Schema({**_ENTRY, vol.Optional("prefix", default=""): cv.string,
+                           vol.Optional("limit", default=200): vol.All(int, vol.Range(1, 2000))}),
+        supports_response=SupportsResponse.ONLY,
+    )
     hass.services.async_register(DOMAIN, "refresh", refresh, schema=vol.Schema(_ENTRY))
     hass.services.async_register(
         DOMAIN,

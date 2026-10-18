@@ -564,6 +564,49 @@ class SparkLogSensor(SparkEntity, SensorEntity):
         return {}
 
 
+class SparkTelemetrySensor(SparkEntity, SensorEntity):
+    """Time series received via OpenTelemetry (collection stage)."""
+
+    _attr_translation_key = "telemetry_series"
+    _attr_icon = "mdi:chart-timeline-variant"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _unrecorded_attributes = frozenset({"metrics"})
+
+    def __init__(self, coordinator: SparkCoordinator) -> None:
+        super().__init__(coordinator, "telemetry_series")
+        self._pending = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        store = self.coordinator.telemetry
+        store.listeners.append(self._message)
+        self.async_on_remove(lambda: store.listeners.remove(self._message))
+
+    def _message(self) -> None:
+        if self._pending is None:
+            self._pending = self.hass.loop.call_later(10, self._write)
+
+    def _write(self) -> None:
+        self._pending = None
+        self.async_write_ha_state()
+
+    @property
+    def native_value(self) -> int:
+        return len(self.coordinator.telemetry.series)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        st = self.coordinator.telemetry
+        names = st.metric_names()
+        return {
+            "requests": st.requests,
+            "rejected": st.rejected,
+            "dropped_series": st.dropped_series,
+            "last_received": st.last_received.isoformat() if st.last_received else None,
+            "metrics": dict(list(names.items())[:150]),
+        }
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: SparkConfigEntry,
@@ -585,6 +628,8 @@ async def async_setup_entry(
     entities.extend(
         SparkSystemSensor(coordinator, d) for d in SYSTEM_SENSORS if d.exists_fn(system)
     )
+    if coordinator.telemetry is not None:
+        entities.append(SparkTelemetrySensor(coordinator))
     if coordinator.syslog:
         entities.append(SparkSyslogSensor(coordinator))
         entities += [

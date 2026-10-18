@@ -94,7 +94,32 @@ with full details.
 Check reception in Home Assistant: sensor *Syslog messages* (counter, products,
 dropped senders) or the action `checkpoint_spark.syslog_messages`.
 
-## 6. Test (optional)
+## 6. OpenTelemetry / Skyline for health metrics (optional, preview)
+
+The gateway can export CPView health metrics (CPU load, memory, connections,
+interfaces, …) with OpenTelemetry ("Skyline", early access on Spark from
+R81.10.08). The integration receives them as **Prometheus remote write**.
+
+**In Home Assistant:** integration options → *Receive OpenTelemetry* on, choose
+a user and a password (≥ 12 characters).
+
+**On the gateway:** *Logs & Monitoring* → *Diagnostics* → **OpenTelemetry**
+(clish: `set open-telemetry url … username … password … is-active on`):
+
+| Setting | Value |
+|---|---|
+| Monitor this appliance using OpenTelemetry | on |
+| URL | `http://<home-assistant>:8123/api/checkpoint_spark/telemetry` (or your `https://` address) |
+| Client authentication | the user/password from the integration options |
+| Server authentication | only for `https://` with a private CA: upload that CA certificate |
+
+The gateway downloads its OpenTelemetry agent from Check Point, so it needs
+internet access. Only POSTs from the gateway's IP with the right credentials
+are accepted; payloads are size-limited and only the newest value per series is
+kept in memory. Check reception: sensor *Telemetry series* or the action
+`checkpoint_spark.telemetry_metrics`.
+
+## 7. Test (optional)
 
 ```sh
 curl -k -X POST https://GATEWAY:4434/web-api/login \

@@ -24,6 +24,16 @@ The receiver is **off by default**. When enabled:
 | Forwarding loops / amplification | Only accepted messages are forwarded, unchanged and rate-limited; forwarding to this receiver or to an allowed sender on the same port is refused |
 | Stored data | Only IPS / malware detections (validated, bounded, retention configurable, max 2000) in `.storage`; raw messages are kept in memory only |
 
+## OpenTelemetry receiver
+
+Off by default. The endpoint `/api/checkpoint_spark/telemetry` does not use a
+Home Assistant token (the gateway only supports basic auth). It accepts requests
+only from the configured gateway IP **and** with the user/password from the
+options (constant-time comparison; password ≥ 12 characters). Bodies are limited
+to 4 MB compressed / 32 MB uncompressed, at most 5000 series are kept (newest
+value only, in memory). Malformed payloads are rejected. Use `https://` if the
+connection leaves your LAN.
+
 ## Reporting
 
 Please open a GitHub issue without sensitive data, or contact the

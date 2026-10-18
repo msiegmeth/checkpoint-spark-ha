@@ -100,6 +100,8 @@ class SparkCoordinator(DataUpdateCoordinator[SparkData]):
         self._seen: dict[tuple[str, str], datetime] = {}
         self._force = False
         self.syslog: Any = None  # SyslogReceiver when enabled in the options
+        self.telemetry: Any = None  # TelemetryStore when enabled in the options
+        self.telemetry_allowed: set[str] = set()
 
     def api(self) -> SparkApi:
         data = self.config_entry.data

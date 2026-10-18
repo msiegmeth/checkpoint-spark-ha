@@ -48,7 +48,10 @@
           "syslog_ignore_sources": "Quellen ignorieren (Syslog)",
           "syslog_senders": "Zusätzliche Absender (Syslog-Relay)",
           "syslog_forward": "Syslog weiterleiten an",
-          "syslog_retention_days": "Treffer aufbewahren"
+          "syslog_retention_days": "Treffer aufbewahren",
+          "telemetry_enabled": "OpenTelemetry empfangen (Vorschau)",
+          "telemetry_username": "OpenTelemetry-Benutzer",
+          "telemetry_password": "OpenTelemetry-Passwort"
         },
         "description": "Jeder Report-Typ wird in seinem eigenen Intervall abgerufen. Reports kosten Rechenzeit am Gateway – lange Zeiträume (Woche, Monat) besser im Stundenbereich.",
         "data_description": {
@@ -58,13 +61,16 @@
           "syslog_ignore_sources": "Kommagetrennte IPs, deren IPS-/Malware-Treffer keine Events auslösen – z. B. der eigene Schwachstellen-Scanner.",
           "syslog_senders": "Kommagetrennte IPs/Hostnamen von Log-Servern, die das Syslog des Gateways weiterleiten (z. B. Synology Protokoll-Center, rsyslog). Leer lassen, wenn das Gateway direkt sendet.",
           "syslog_forward": "Optional Host:Port (UDP), der jede angenommene Meldung unverändert erhält – z. B. ein Archiv auf dem NAS.",
-          "syslog_retention_days": "Wie lange IPS- und Malware-Treffer gespeichert bleiben (überstehen Neustarts). Rohmeldungen werden nie gespeichert."
+          "syslog_retention_days": "Wie lange IPS- und Malware-Treffer gespeichert bleiben (überstehen Neustarts). Rohmeldungen werden nie gespeichert.",
+          "telemetry_enabled": "Nimmt den Skyline-/OpenTelemetry-Export des Gateways (Prometheus Remote Write) unter /api/checkpoint_spark/telemetry an – nur von der Gateway-IP, mit Benutzer/Passwort unten (Basic Auth). URL, Benutzer und Passwort am Gateway unter Logs & Monitoring → OpenTelemetry eintragen.",
+          "telemetry_password": "Mindestens 12 Zeichen."
         }
       }
     },
     "error": {
       "no_report_type": "Mindestens einen Report-Typ wählen",
-      "invalid_forward": "Format Host:Port, z. B. 192.168.1.2:514"
+      "invalid_forward": "Format Host:Port, z. B. 192.168.1.2:514",
+      "telemetry_password": "Passwort mit mindestens 12 Zeichen nötig"
     }
   },
   "selector": {
@@ -322,6 +328,9 @@
       },
       "detections_30d": {
         "name": "Treffer (30 Tage)"
+      },
+      "telemetry_series": {
+        "name": "Telemetrie-Zeitreihen"
       }
     },
     "binary_sensor": {
@@ -413,6 +422,24 @@
           "description": "ips_attack oder malware_detected"
         }
       }
+    },
+    "telemetry_metrics": {
+      "name": "Telemetrie-Metriken",
+      "description": "Gibt die empfangenen OpenTelemetry-Metriken zurück (neuester Wert je Zeitreihe).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Nur bei mehreren Gateways nötig."
+        },
+        "prefix": {
+          "name": "Prefix",
+          "description": "Nur Zeitreihen, die so beginnen"
+        },
+        "limit": {
+          "name": "Limit",
+          "description": "Max. Zeilen"
+        }
+      }
     }
   },
   "exceptions": {
@@ -427,6 +454,9 @@
     },
     "syslog_disabled": {
       "message": "Syslog-Empfang ist in den Optionen nicht aktiviert."
+    },
+    "telemetry_disabled": {
+      "message": "OpenTelemetry-Empfang ist in den Optionen nicht aktiviert."
     }
   }
 }
