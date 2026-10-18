@@ -36,7 +36,8 @@ const T = {
     blockedA: "blocked", detectedA: "detected", allowedA: "allowed", other: "Other", noData: "no data",
     infHosts: "infected hosts", newInf: "newly infected", critInf: "critically infected", servers: "infected servers",
     noReport: "not in this report", severity: "Severity", times: "×", targets: "targets", occurrences: "Occurrences",
-    first: "first", last: "last", reportOnly: "report total only",
+    first: "first", last: "last", reportOnly: "report total only", loading: "loading…",
+    temps: "Temperature", ram: "Memory", noStats: "No statistics yet for this period.",
     noSyslogType: "The gateway sends no single events for this type via syslog (or not with details) – only the report totals below.",
   },
   de: {
@@ -59,7 +60,8 @@ const T = {
     blockedA: "blockiert", detectedA: "erkannt", allowedA: "durchgelassen", other: "Weitere", noData: "keine Daten",
     infHosts: "infizierte Hosts", newInf: "neu infiziert", critInf: "kritisch infiziert", servers: "infizierte Server",
     noReport: "nicht in diesem Report", severity: "Schwere", times: "×", targets: "Ziele", occurrences: "Vorkommen",
-    first: "erstes", last: "letztes", reportOnly: "nur Report-Summe",
+    first: "erstes", last: "letztes", reportOnly: "nur Report-Summe", loading: "lädt…",
+    temps: "Temperatur", ram: "Arbeitsspeicher", noStats: "Für diesen Zeitraum gibt es noch keine Statistik.",
     noSyslogType: "Für diese Art schickt das Gateway per Syslog keine (oder keine verwertbaren) Einzelereignisse – nur die Report-Summen unten.",
   },
 };
@@ -316,6 +318,7 @@ class CheckpointSparkCard extends HTMLElement {
     }
     const dev = this._device && this._hass.devices ? this._hass.devices[this._device] : null;
     const title = this._config.title || (dev && (dev.name_by_user || dev.name)) || t.title;
+    if (st.tab === "system") this._loadStats();
     const body = st.tab === "traffic" ? this._traffic() : st.tab === "tp" ? this._threats() : this._system();
     this.shadowRoot.innerHTML = `<style>${CSS}</style>
       <ha-card>
@@ -637,6 +640,64 @@ class CheckpointSparkCard extends HTMLElement {
     return out;
   }
 
+  /* ------------------------------------------------ system statistics -- */
+  /** Long-term statistics (recorder) for the system charts; cached per period for 5 minutes. */
+  _loadStats() {
+    const ids = ["cpu_temperature", "ddr_temperature", "memory_used"].map((k) => this._map[k]).filter(Boolean);
+    if (!ids.length || !this._hass?.callWS) return;
+    const period = this._st.period;
+    const c = this._stats;
+    if (c && c.period === period && (c.loading || Date.now() - c.at < 300e3)) return;
+    this._stats = { period, loading: true, at: Date.now(), data: c && c.period === period ? c.data : null };
+    const end = new Date(), start = new Date(end - PERIOD_HOURS[period] * 3600e3);
+    this._hass.callWS({
+      type: "recorder/statistics_during_period", start_time: start.toISOString(), end_time: end.toISOString(),
+      statistic_ids: ids, period: PERIOD_HOURS[period] > 24 ? "hour" : "5minute", types: ["mean", "min", "max"],
+    }).then((data) => {
+      if (this._stats.period === period) { this._stats = { period, loading: false, at: Date.now(), data }; this._render(); }
+    }).catch(() => { this._stats = { period, loading: false, at: Date.now(), data: {} }; this._render(); });
+  }
+
+  /** Line chart (mean, with min/max band) in the real card width, soft grid, 1-2-5 steps. */
+  _lineChart(series, unit, digits = 0) {
+    const pts = series.map((sr) => ({ ...sr, rows: (this._stats?.data?.[sr.id] || []).filter((r) => r.mean != null) }));
+    if (!pts.some((p) => p.rows.length)) {
+      return `<div class="muted pad">${esc(this._stats?.loading ? this._t.loading : this._t.noStats)}</div>`;
+    }
+    const W = this._cw, H = 140, L = 54, B = 20, top = 8;
+    const all = pts.flatMap((p) => p.rows.flatMap((r) => [r.min ?? r.mean, r.max ?? r.mean]));
+    let lo = Math.min(...all), hi = Math.max(...all);
+    if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+    const step = niceStep(hi - lo, 4);
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    const t0 = Date.now() - PERIOD_HOURS[this._st.period] * 3600e3, t1 = Date.now();
+    const x = (t) => L + ((W - L - 4) * (t - t0)) / (t1 - t0);
+    const y = (v) => top + (H - top - B) * (1 - (v - lo) / (hi - lo));
+    let svg = "";
+    for (let g = lo; g <= hi + step / 2; g += step) {
+      svg += `<line x1="${L}" x2="${W}" y1="${y(g)}" y2="${y(g)}" class="grid"/><text x="${L - 6}" y="${y(g) + 3}" class="ax" text-anchor="end">${esc(this._num(g, digits))} ${esc(unit)}</text>`;
+    }
+    const ticks = Math.max(3, Math.floor(W / 110));
+    const withDate = PERIOD_HOURS[this._st.period] > 24;
+    for (let i = 0; i <= ticks; i++) {
+      const t = t0 + ((t1 - t0) * i) / ticks;
+      const lab = withDate ? new Date(t).toLocaleDateString(this._loc, { day: "2-digit", month: "2-digit" }) : this._time(new Date(t).toISOString(), false);
+      svg += `<text x="${x(t)}" y="${H - 5}" class="ax" text-anchor="${i === 0 ? "start" : i === ticks ? "end" : "middle"}">${esc(lab)}</text>`;
+    }
+    for (const p of pts) {
+      if (!p.rows.length) continue;
+      const band = p.rows.map((r) => `${x(r.start)},${y(r.max ?? r.mean)}`).join(" ") + " " +
+        [...p.rows].reverse().map((r) => `${x(r.start)},${y(r.min ?? r.mean)}`).join(" ");
+      svg += `<polygon points="${band}" fill="${p.color}" opacity=".15"/>`;
+      svg += `<polyline points="${p.rows.map((r) => `${x(r.start)},${y(r.mean)}`).join(" ")}" fill="none" stroke="${p.color}" stroke-width="2" stroke-linejoin="round"/>`;
+    }
+    const legend = pts.map((p) => {
+      const last = p.rows[p.rows.length - 1];
+      return this._pill(`${p.label}${last ? ` ${this._num(last.mean, digits)} ${unit}` : ""}`, p.color);
+    }).join(" ");
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="chart">${svg}</svg><div class="legend">${legend}</div>`;
+  }
+
   /* ---------------------------------------------------------- system -- */
   _system() {
     const t = this._t;
@@ -654,7 +715,11 @@ class CheckpointSparkCard extends HTMLElement {
       kv(t.emmc, this._v("emmc_wear") == null ? "–" : `≤ ${this._num(this._v("emmc_wear"))} %`) +
       kv(t.contracts, exp && !isNaN(new Date(exp.state)) ? `${esc(new Date(exp.state).toLocaleDateString(this._loc))}${expired.length ? ` <span class="muted">· ${expired.length} ${esc(t.expired)}</span>` : ""}` : "–") +
       kv(t.firmware, esc(this._s("firmware")?.state || "–")) +
-      kv(t.report, esc(this._time(this._s(this._pk("report_time"))?.state)));
+      kv(t.report, esc(this._time(this._s(this._pk("report_time"))?.state))) +
+      `<h4>${esc(t.temps)}</h4>` + this._lineChart([
+        { id: this._map.cpu_temperature, label: "CPU", color: "#fb8c00" },
+        { id: this._map.ddr_temperature, label: "DDR", color: "#ffca28" }], "°C") +
+      `<h4>${esc(t.ram)}</h4>` + this._lineChart([{ id: this._map.memory_used, label: "RAM", color: "#ab47bc" }], "MB");
   }
 }
 

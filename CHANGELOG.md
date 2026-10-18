@@ -22,7 +22,8 @@ All notable changes are documented here. Format based on
     tap a row for source, target, CVE links and requested URL – and the report
     totals (protections, malware, hosts)
   - **System** tab: blades, internet, VPN, temperatures, memory, eMMC,
-    contracts, firmware
+    contracts, firmware – plus charts for CPU/DDR temperature and memory over
+    the selected period (from the recorder's long-term statistics)
   - Threat events are grouped per alert and host (e.g. "Max Ping Size ×11"),
     with first/last time, targets and single occurrences; filter by severity
   - Brand icons from Simple Icons (bundled, CC0) with Material Design Icons as
