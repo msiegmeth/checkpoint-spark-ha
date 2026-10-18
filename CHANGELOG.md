@@ -4,6 +4,14 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.2] - 2026-10-18
+
+### Changed
+- Maintenance release, no functional changes: the repository now passes the
+  HACS validation without exceptions (the integration's own `brand/` folder
+  provides the icon), and the developer notes no longer contain
+  installation-specific details.
+
 ## [0.5.1] - 2026-10-18
 
 ### Changed
