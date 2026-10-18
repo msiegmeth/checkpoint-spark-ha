@@ -39,7 +39,12 @@ const T = {
     first: "first", last: "last", reportOnly: "report total only", loading: "loading…",
     temps: "Temperature", ram: "Memory", noStats: "No statistics yet for this period.",
     cpuLoad: "CPU load", wan: "Internet line", latency: "Latency / jitter", conns: "Connections", booted: "Running since",
-    perf: "Load (OpenTelemetry)", noTelemetry: "Enable OpenTelemetry in the integration options for CPU load, throughput and line quality.",
+    perf: "Load (OpenTelemetry)", newConns: "New connections", perSec: "/s", interfaces: "Throughput per interface",
+    iface: "Interface", tunnels: "VPN tunnels", contractList: "Contracts", sku: "Contract", expires: "Expires",
+    drops: "Firewall drops", dropsH: "per hour", drops24: "24 h", topSrc: "Top sources (24 h)", topSvc: "Top services (24 h)",
+    byReason: "Dropped packets by reason (since gateway start)", amStatus: "Anti-malware status",
+    scanned: "Scanned hosts", uniqueThreats: "Unique threats", hour: "hour", day: "day", week: "week",
+    perDay: "Detections per day", noSyslogDrops: "Drops per source come from syslog (option Receive syslog).", noTelemetry: "Enable OpenTelemetry in the integration options for CPU load, throughput and line quality.",
     noSyslogType: "The gateway sends no single events for this type via syslog (or not with details) – only the report totals below.",
   },
   de: {
@@ -65,7 +70,12 @@ const T = {
     first: "erstes", last: "letztes", reportOnly: "nur Report-Summe", loading: "lädt…",
     temps: "Temperatur", ram: "Arbeitsspeicher", noStats: "Für diesen Zeitraum gibt es noch keine Statistik.",
     cpuLoad: "CPU-Auslastung", wan: "Internetleitung", latency: "Latenz / Jitter", conns: "Verbindungen", booted: "Läuft seit",
-    perf: "Auslastung (OpenTelemetry)", noTelemetry: "OpenTelemetry in den Optionen der Integration einschalten, dann gibt es CPU-Auslastung, Durchsatz und Leitungsqualität.",
+    perf: "Auslastung (OpenTelemetry)", newConns: "Neue Verbindungen", perSec: "/s", interfaces: "Durchsatz je Schnittstelle",
+    iface: "Schnittstelle", tunnels: "VPN-Tunnel", contractList: "Verträge", sku: "Vertrag", expires: "Läuft ab",
+    drops: "Firewall-Drops", dropsH: "pro Stunde", drops24: "24 h", topSrc: "Top-Quellen (24 h)", topSvc: "Top-Dienste (24 h)",
+    byReason: "Verworfene Pakete nach Grund (seit Gerätestart)", amStatus: "Anti-Malware-Status",
+    scanned: "Gescannte Hosts", uniqueThreats: "Eindeutige Bedrohungen", hour: "Stunde", day: "Tag", week: "Woche",
+    perDay: "Treffer pro Tag", noSyslogDrops: "Drops je Quelle kommen aus Syslog (Option „Syslog empfangen“).", noTelemetry: "OpenTelemetry in den Optionen der Integration einschalten, dann gibt es CPU-Auslastung, Durchsatz und Leitungsqualität.",
     noSyslogType: "Für diese Art schickt das Gateway per Syslog keine (oder keine verwertbaren) Einzelereignisse – nur die Report-Summen unten.",
   },
 };
@@ -554,7 +564,68 @@ class CheckpointSparkCard extends HTMLElement {
       : noType ? `<div class="hint">${esc(t.noSyslogType)}</div>`
       : `<h4>${esc(t.flow)}: ${esc(t.dir)} → ${esc(t.type)} → ${esc(t.action)}</h4>${this._threatSankey(ev)}
          <h4>${esc(t.events)} · ${ev.length}</h4>${this._eventTable(ev)}`;
-    return filters + events + this._reportThreats();
+    return filters + (st.type === "all" || st.type === "ips" ? this._perDay() : "") + events +
+      (st.type === "all" || st.type === "malware" ? this._amStatus() : "") +
+      (st.type === "all" ? this._drops() : "") + this._reportThreats();
+  }
+
+  /** Stored detections per day (IPS / malware), stacked bars, 7 or 30 days. */
+  _perDay() {
+    const daily = this._a("detections_30d", "daily");
+    if (!daily) return "";
+    const days = this._st.period === "monthly" ? 30 : 7;
+    const keys = [];
+    for (let i = days - 1; i >= 0; i--) keys.push(new Date(Date.now() - i * 864e5).toISOString().slice(0, 10));
+    const data = keys.map((k) => ({ k, ips: (daily[k] || {}).ips_attack || 0, mal: (daily[k] || {}).malware_detected || 0 }));
+    if (!data.some((d) => d.ips + d.mal)) return "";
+    const W = this._cw, H = 110, L = 34, B = 18, top = 6;
+    const max = Math.max(1, ...data.map((d) => d.ips + d.mal));
+    const step = niceStep(max, 3), ymax = Math.ceil(max / step) * step;
+    const y = (v) => top + (H - top - B) * (1 - v / ymax);
+    const bw = (W - L) / data.length;
+    let svg = "";
+    for (let g = 0; g <= ymax + step / 2; g += step) svg += `<line x1="${L}" x2="${W}" y1="${y(g)}" y2="${y(g)}" class="grid"/><text x="${L - 5}" y="${y(g) + 3}" class="ax" text-anchor="end">${this._num(g)}</text>`;
+    const every = Math.ceil(data.length / Math.max(3, Math.floor(W / 70)));
+    data.forEach((d, i) => {
+      const x = L + i * bw + bw * 0.15, w = bw * 0.7;
+      svg += `<rect x="${x}" y="${y(d.ips)}" width="${w}" height="${y(0) - y(d.ips)}" fill="${TYPE_COLOR.ips}" rx="1"><title>${esc(d.k)} IPS ${d.ips}</title></rect>`;
+      svg += `<rect x="${x}" y="${y(d.ips + d.mal)}" width="${w}" height="${y(d.ips) - y(d.ips + d.mal)}" fill="#ef5350" rx="1"><title>${esc(d.k)} Malware ${d.mal}</title></rect>`;
+      if (i % every === 0) svg += `<text x="${x + w / 2}" y="${H - 4}" class="ax" text-anchor="middle">${esc(new Date(d.k).toLocaleDateString(this._loc, { day: "2-digit", month: "2-digit" }))}</text>`;
+    });
+    return `<h4>${esc(this._t.perDay)} · ${days} d</h4><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="chart">${svg}</svg>
+      <div class="legend">${this._pill(this._t.ips, TYPE_COLOR.ips)} ${this._pill(this._t.blocked, "#ef5350")}</div>`;
+  }
+
+  /** Anti-malware status from syslog (scanned hosts / unique threats per hour, day, week). */
+  _amStatus() {
+    const t = this._t, sc = this._s("scanned_hosts"), dt = this._s("detected_threats");
+    if (!sc && !dt) return "";
+    const cell = (s) => (s ? [s.attributes.hour, s.state, s.attributes.week].map((v) => this._num(v == null || v === "unknown" ? null : Number(v))) : ["–", "–", "–"]);
+    const [a, b] = [cell(sc), cell(dt)];
+    return `<h4>${esc(t.amStatus)}</h4><table><tr><th></th><th class="r">${esc(t.hour)}</th><th class="r">${esc(t.day)}</th><th class="r">${esc(t.week)}</th></tr>
+      <tr><td>${esc(t.scanned)}</td>${a.map((v) => `<td class="r">${v}</td>`).join("")}</tr>
+      <tr><td>${esc(t.uniqueThreats)}</td>${b.map((v) => `<td class="r">${v}</td>`).join("")}</tr></table>`;
+  }
+
+  /** Firewall drops: syslog counts + top sources/services, telemetry drops by reason. */
+  _drops() {
+    const t = this._t, d = this._s("firewall_drops_1h"), r = this._s("drops");
+    if (!d && !r) return "";
+    let out = `<h4>${esc(t.drops)}</h4>`;
+    if (d) {
+      out += `<div class="grid4"><div class="mini"><b>${this._num(this._v("firewall_drops_1h"))}</b><span>${esc(t.dropsH)}</span></div>
+        <div class="mini"><b>${this._num(d.attributes.last_24h)}</b><span>${esc(t.drops24)}</span></div></div>`;
+      const src = d.attributes.top_sources || [], svc = d.attributes.top_services || [];
+      const ms = Math.max(1, ...src.map((x) => x.count)), mv = Math.max(1, ...svc.map((x) => x.count));
+      out += `<div class="two">${this._table([t.src, ""], src.map((x) => `<tr><td class="n">${this._who(x.name)}${this._bar(x.count, ms, C.grey)}</td><td class="r">${this._num(x.count)}</td></tr>`))}
+        ${this._table([t.topSvc, ""], svc.map((x) => `<tr><td class="n">${esc(x.name)}${this._bar(x.count, mv, C.grey)}</td><td class="r">${this._num(x.count)}</td></tr>`))}</div>`;
+    } else out += `<div class="muted small pad">${esc(t.noSyslogDrops)}</div>`;
+    const reasons = r?.attributes?.by_reason;
+    if (reasons) {
+      const ent = Object.entries(reasons), mr = Math.max(1, ...ent.map(([, v]) => v));
+      out += `<h4>${esc(t.byReason)}</h4>` + this._table(["", ""], ent.map(([k, v]) => `<tr><td class="n">${esc(k)}${this._bar(v, mr, C.orange)}</td><td class="r">${this._num(v)}</td></tr>`));
+    }
+    return out;
   }
 
   _threatSankey(ev) {
@@ -648,7 +719,7 @@ class CheckpointSparkCard extends HTMLElement {
   /** Long-term statistics (recorder) for the system charts; cached per period for 5 minutes. */
   _loadStats() {
     const ids = ["cpu_temperature", "ddr_temperature", "memory_used", "cpu_load", "memory_load", "wan_download",
-      "wan_upload", "wan_latency", "wan_jitter", "connections"].map((k) => this._map[k]).filter(Boolean);
+      "wan_upload", "wan_latency", "wan_jitter", "connections", "connection_rate"].map((k) => this._map[k]).filter(Boolean);
     if (!ids.length || !this._hass?.callWS) return;
     const period = this._st.period;
     const c = this._stats;
@@ -714,11 +785,14 @@ class CheckpointSparkCard extends HTMLElement {
     const expired = exp?.attributes?.expired_contracts || [];
     return `<div class="blades">${Object.entries(blades).map(([k, on]) => `<span class="${on ? "" : "off"}"><ha-icon icon="${on ? "mdi:check-circle" : "mdi:minus-circle-outline"}"></ha-icon>${esc(BLADE[k] || k)}</span>`).join("")}</div>` +
       kv(t.internet, inet && !isNaN(new Date(inet.state)) ? `${esc(t.since)} ${esc(this._time(inet.state))}` : "–") +
-      kv(t.vpn, this._num(this._v("vpn_tunnels_up"))) +
+      `<details class="kvd"><summary>${kv(t.vpn, this._num(this._v("vpn_tunnels_up")) + ` <span class="muted">/ ${(this._a("vpn_tunnels_up", "tunnels") || []).length} ▸</span>`)}</summary>
+        ${this._table([t.name, ""], (this._a("vpn_tunnels_up", "tunnels") || []).map((x) => `<tr><td class="n">${esc(x.name)} <span class="muted small">${esc(x.type || "")}</span></td><td class="r">${this._pill(x.state, x.state === "up" ? C.green : C.red)}</td></tr>`))}</details>` +
       kv(t.cpu, `${cpu == null ? "–" : Math.round(cpu) + " °C"} / ${ddr == null ? "–" : Math.round(ddr) + " °C"}`) +
       kv(t.mem, this._v("memory_used") == null ? "–" : `${this._num(this._v("memory_used"))} MB`) +
       kv(t.emmc, this._v("emmc_wear") == null ? "–" : `≤ ${this._num(this._v("emmc_wear"))} %`) +
-      kv(t.contracts, exp && !isNaN(new Date(exp.state)) ? `${esc(new Date(exp.state).toLocaleDateString(this._loc))}${expired.length ? ` <span class="muted">· ${expired.length} ${esc(t.expired)}</span>` : ""}` : "–") +
+      `<details class="kvd"><summary>${kv(t.contracts, exp && !isNaN(new Date(exp.state)) ? `${esc(new Date(exp.state).toLocaleDateString(this._loc))}${expired.length ? ` <span class="muted">· ${expired.length} ${esc(t.expired)}</span>` : ""} <span class="muted">▸</span>` : "–")}</summary>
+        ${this._table([t.sku, t.expires], (exp?.attributes?.contracts || []).slice().sort((a, b) => a.expires.localeCompare(b.expires)).map((c) =>
+          `<tr><td class="n">${esc(c.sku)}</td><td class="r">${c.expired ? this._pill(new Date(c.expires).toLocaleDateString(this._loc), C.red) : esc(new Date(c.expires).toLocaleDateString(this._loc))}</td></tr>`))}</details>` +
       kv(t.firmware, esc(this._s("firmware")?.state || "–")) +
       kv(t.report, esc(this._time(this._s(this._pk("report_time"))?.state))) +
       this._perf() +
@@ -737,7 +811,8 @@ class CheckpointSparkCard extends HTMLElement {
     const tiles = [
       [t.cpuLoad, `${v("cpu_load")} %`, "#ef5350"], [t.ram, `${v("memory_load")} %`, "#ab47bc"],
       ["WAN ↓ / ↑", `${v("wan_download", 1)} / ${v("wan_upload", 1)} Mbit/s`, "#42a5f5"],
-      [t.latency, `${v("wan_latency")} / ${v("wan_jitter")} ms`, "#26a69a"], [t.conns, v("connections"), "#7e57c2"],
+      [t.latency, `${v("wan_latency")} / ${v("wan_jitter")} ms`, "#26a69a"],
+      [t.conns, `${v("connections")} <span class="muted small">· ${v("connection_rate")}${esc(t.perSec)}</span>`, "#7e57c2"],
       [t.booted, boot && !isNaN(new Date(boot.state)) ? esc(this._time(boot.state)) : "–", "var(--secondary-text-color)"],
     ];
     return `<h4>${esc(t.perf)}</h4><div class="sums">${tiles.map(([l, val, c]) =>
@@ -750,7 +825,20 @@ class CheckpointSparkCard extends HTMLElement {
         { id: this._map.wan_upload, label: "↑", color: "#26a69a" }], "Mbit/s", 1) +
       `<h4>${esc(t.latency)}</h4>` + this._lineChart([
         { id: this._map.wan_latency, label: this._lang === "de" ? "Latenz" : "Latency", color: "#ffa000" },
-        { id: this._map.wan_jitter, label: "Jitter", color: "#8d6e63" }], "ms");
+        { id: this._map.wan_jitter, label: "Jitter", color: "#8d6e63" }], "ms") +
+      `<h4>${esc(t.conns)}</h4>` + this._lineChart([{ id: this._map.connections, label: t.conns, color: "#7e57c2" }], "") +
+      `<h4>${esc(t.newConns)}</h4>` + this._lineChart([{ id: this._map.connection_rate, label: t.newConns, color: "#5c6bc0" }], "/s") +
+      this._interfaces();
+  }
+
+  _interfaces() {
+    const ifs = this._a("wan_download", "interfaces");
+    if (!ifs) return "";
+    const rows = Object.entries(ifs).filter(([, v]) => (v.rx_mbit || 0) + (v.tx_mbit || 0) > 0)
+      .sort((a, b) => (b[1].rx_mbit + b[1].tx_mbit) - (a[1].rx_mbit + a[1].tx_mbit));
+    const max = Math.max(1, ...rows.map(([, v]) => Math.max(v.rx_mbit || 0, v.tx_mbit || 0)));
+    return `<h4>${esc(this._t.interfaces)}</h4>` + this._table([this._t.iface, "↓ Mbit/s", "↑ Mbit/s"], rows.map(([k, v]) =>
+      `<tr><td class="n">${esc(k)}${this._bar(Math.max(v.rx_mbit || 0, v.tx_mbit || 0), max, PALETTE[0])}</td><td class="r">${this._num(v.rx_mbit, 1)}</td><td class="r">${this._num(v.tx_mbit, 1)}</td></tr>`));
   }
 }
 
@@ -820,6 +908,10 @@ const CSS = `
   .lab { fill: var(--primary-text-color); font-size: 11px; } .lab .sub { fill: var(--secondary-text-color); }
   .link { opacity: .35; } .link:hover { opacity: .65; }
   .legend { display: flex; gap: 6px; margin-top: 2px; }
+  details.kvd > summary { list-style: none; cursor: pointer; } details.kvd > summary::-webkit-details-marker { display: none; }
+  details.kvd[open] > summary .muted:last-child { transform: rotate(90deg); display: inline-block; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 600px) { .two { grid-template-columns: 1fr; } }
   .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
   .mini { display: flex; flex-direction: column; padding: 6px 8px; border-radius: 10px; background: var(--secondary-background-color, rgba(127,127,127,.08)); }
   .mini b { font-size: 18px; font-weight: 500; } .mini span { font-size: 11px; color: var(--secondary-text-color); }

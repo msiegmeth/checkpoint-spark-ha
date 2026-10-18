@@ -4,6 +4,20 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-10-18
+
+### New
+- **Sensor "Dropped packets"** (OpenTelemetry): packets the gateway dropped
+  since start, with the breakdown **by reason** (rulebase, CoreXL, "first packet
+  not SYN", …) as attribute; counts per period come from the statistics.
+- **Card – Threat Prevention:** detections per day (7 / 30 days, IPS and
+  malware stacked), anti-malware status (scanned hosts and unique threats per
+  hour / day / week), **firewall drops** per hour and 24 h with top sources and
+  services, and dropped packets by reason.
+- **Card – System:** new connections per second (tile and chart), connections
+  chart, **throughput per interface**, VPN tunnels and the full contract list
+  (with expiry dates) to expand.
+
 ## [0.6.1] - 2026-10-18
 
 ### Fixed

@@ -361,6 +361,9 @@
       },
       "wan_packet_loss": {
         "name": "WAN-Paketverlust"
+      },
+      "drops": {
+        "name": "Verworfene Pakete"
       }
     },
     "binary_sensor": {

@@ -621,6 +621,22 @@ def _tm_sum(st, metric: str, label: str) -> tuple[float | None, dict]:
     return sum(v for _, v in vals), {lab.get(label, "?"): v for lab, v in vals}
 
 
+def _tm_drops(st) -> tuple[float | None, dict]:
+    """Dropped packets since boot (sum of all reasons) + per reason; rate as attribute."""
+    vals = st.values("system_traffic_dropped")
+    if not vals:
+        return None, {}
+    by_reason: dict[str, int] = {}
+    for lab, v in vals:
+        reason = lab.get("type") or lab.get("component") or "?"
+        by_reason[reason] = by_reason.get(reason, 0) + int(v)
+    rate = sum(v for _, v in st.values("system_traffic_dropped_rate"))
+    return sum(by_reason.values()), {
+        "by_reason": dict(sorted(by_reason.items(), key=lambda x: -x[1])),
+        "rate_per_s": rate,
+    }
+
+
 def _tm_boot(st):
     up = next((v for _, v in st.values("system_uptime")), None)
     if up is None or st.last_received is None:
@@ -652,6 +668,8 @@ TELEMETRY_SENSORS: tuple[SparkTelemetryDescription, ...] = (
     SparkTelemetryDescription(key="connection_rate", icon="mdi:speedometer", native_unit_of_measurement="1/s",
                               state_class=SensorStateClass.MEASUREMENT,
                               value_fn=lambda st: _tm_sum(st, "system_network_connections_rate", "component")),
+    SparkTelemetryDescription(key="drops", icon="mdi:wall-fire", state_class=SensorStateClass.TOTAL_INCREASING,
+                              value_fn=lambda st: _tm_drops(st)),
     SparkTelemetryDescription(key="wan_download", icon="mdi:download-network", device_class=SensorDeviceClass.DATA_RATE,
                               native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND, state_class=SensorStateClass.MEASUREMENT,
                               suggested_display_precision=1,
@@ -675,7 +693,7 @@ class SparkTelemetryValueSensor(SparkEntity, SensorEntity):
     """Sensor fed by the OpenTelemetry receiver."""
 
     entity_description: SparkTelemetryDescription
-    _unrecorded_attributes = frozenset({"interfaces", "per_isp"})
+    _unrecorded_attributes = frozenset({"interfaces", "per_isp", "by_reason"})
 
     def __init__(self, coordinator: SparkCoordinator, description: SparkTelemetryDescription) -> None:
         super().__init__(coordinator, description.key)

@@ -138,6 +138,7 @@ contains (e.g. the hourly report has no IPS or high-risk figures).
 | CPU load / memory load | % |
 | Booted (timestamp, diagnostic) | – |
 | Connections / new connections | count / 1/s |
+| Dropped packets | count since gateway start (attribute `by_reason`, `rate_per_s`) |
 | WAN download / upload | Mbit/s (attribute `interfaces` with all interfaces) |
 | WAN latency / jitter / packet loss | ms / ms / % (SD-WAN probes, attribute `per_isp`) |
 | Telemetry series (diagnostic) | received series, requests, rejected, metric names |
