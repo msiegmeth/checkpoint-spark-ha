@@ -1,14 +1,14 @@
 {
   "domain": "checkpoint_spark",
   "name": "Check Point Quantum Spark",
+  "after_dependencies": [
+    "frontend",
+    "http"
+  ],
   "codeowners": [
     "@msiegmeth"
   ],
   "config_flow": true,
-  "dependencies": [
-    "frontend",
-    "http"
-  ],
   "documentation": "https://github.com/msiegmeth/checkpoint-spark-ha",
   "integration_type": "device",
   "iot_class": "local_polling",

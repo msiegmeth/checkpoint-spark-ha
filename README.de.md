@@ -87,6 +87,20 @@ abschalten per SSH in Clish als Super-Administrator: `set admin-2fa off`
 (die WebUI verweigert das teils mit „no privileges“). Zum Ausgleich den
 Admin-Zugriff auf wenige vertrauenswürdige IPs beschränken.
 
+## Dashboard-Karte
+
+Die Integration bringt eine eigene Karte mit: *Karte hinzufügen* → **Check Point
+Quantum Spark** → Gateway wählen. Zeitraum 1 h / 24 h / 7 Tage / 30 Tage,
+Reiter Traffic, Threat Prevention (Filter Art/Richtung/Schwere, Ereignisse je
+Meldung und Host zusammengefasst) und System. Marken-Icons von Simple Icons (CC0).
+
+## Syslog am Spark einstellen
+
+Log-Server/Syslog auf die IP von Home Assistant, Port wie in der Integration
+(Standard **5140**), **UDP**, **System-Logs** und **Security-Logs** senden.
+Optional *Show obfuscated fields* (mehr Details, aber auch mehr persönliche
+Daten). Details: [docs/gateway-setup.md](docs/gateway-setup.md#5-syslog-for-real-time-events-optional).
+
 ## Entitäten, Dashboard, Diagnose
 
 Siehe [README.md](README.md) – Tabellen und Hinweise gelten gleich.

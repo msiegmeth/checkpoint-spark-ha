@@ -166,7 +166,8 @@ Option *Receive syslog* starts a UDP listener (default port **5140**; UniFi
 Network already uses 5514). Two ways to feed it:
 
 1. **Directly** – on the gateway, add a syslog server pointing to the Home
-   Assistant host and port and enable sending security logs.
+   Assistant host and port (UDP) and enable sending **system and security
+   logs** – step by step in [gateway setup](docs/gateway-setup.md#5-syslog-for-real-time-events-optional).
 2. **Via a log server** – the gateway sends to e.g. Synology Log Center,
    rsyslog or syslog-ng, which forwards to Home Assistant. Add that server's
    IP under *Additional senders*.
@@ -203,7 +204,27 @@ the same attack and source. Sources listed in *Ignore sources* never fire events
 
 All actions accept an optional `config_entry_id` when several gateways are configured.
 
-## Dashboard
+## Dashboard card
+
+The integration ships its own card – no extra resources needed. *Add card* →
+search for **Check Point Quantum Spark** → choose the gateway.
+
+- Period selector **1 h · 24 h · 7 days · 30 days** for everything
+- Summary like the gateway's PDF report
+- **Traffic**: volume over time, flow Download/Upload → categories, top apps /
+  sites / categories by volume or sessions (with brand icons)
+- **Threat Prevention**: filters for type, direction and severity, flow
+  direction → type → action, events grouped per alert and host (tap for
+  targets, CVE links, requested URL, single occurrences), report totals
+- **System**: blades, internet, VPN, temperatures, memory, eMMC, contracts
+
+Optional YAML: `period`, `names` (`{ip: name}` for devices without a tracker),
+`resolvers` (own DNS servers, marked in host lists).
+
+Brand icons: [Simple Icons](https://simpleicons.org) (CC0), bundled with the
+card – the logos are trademarks of their owners. Fallback: Material Design Icons.
+
+## Dashboard example (standard cards)
 
 An example dashboard using only standard cards is in
 [examples/dashboard.yaml](examples/dashboard.yaml).

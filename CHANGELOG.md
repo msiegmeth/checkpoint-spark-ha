@@ -23,7 +23,13 @@ All notable changes are documented here. Format based on
     totals (protections, malware, hosts)
   - **System** tab: blades, internet, VPN, temperatures, memory, eMMC,
     contracts, firmware
+  - Threat events are grouped per alert and host (e.g. "Max Ping Size ×11"),
+    with first/last time, targets and single occurrences; filter by severity
+  - Brand icons from Simple Icons (bundled, CC0) with Material Design Icons as
+    fallback
   - Follows the HA theme (light/dark), English and German, no external requests
+- Documentation: which syslog settings to use on the gateway
+  (system + security logs, UDP, optional "show obfuscated fields")
 - **Direction of syslog detections:** every IPS / malware detection now carries
   `direction` – `inbound` (external → internal), `internal` (internal → internal)
   or `outbound` (internal → external). Shown in the card, part of the event data,

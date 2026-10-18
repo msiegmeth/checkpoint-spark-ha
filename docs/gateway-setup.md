@@ -58,7 +58,43 @@ WebUI → **Device → Administrator Access**: make sure web/API access is
 allowed from the network Home Assistant runs in (usually the internal
 network).
 
-## 5. Test (optional)
+## 5. Syslog for real-time events (optional)
+
+Needed for single events with time, source, target and direction (IPS,
+anti-malware status, firewall drops) – the REST API reports only totals.
+
+**On the gateway** (WebUI, *Logs & Monitoring* → log server / syslog settings;
+names differ slightly between firmware versions):
+
+| Setting | Value |
+|---|---|
+| Syslog server | IP address of Home Assistant |
+| Port / protocol | the port set in the integration (default **5140**), **UDP** |
+| Send **system logs** | on |
+| Send **security logs** | on (IPS, threat prevention, application control, firewall) |
+| **Show obfuscated fields** | optional, see below |
+
+**In Home Assistant:** integration options → *Receive syslog* on, same port.
+If the gateway cannot send to Home Assistant directly, point it to a log server
+(e.g. Synology Log Center, rsyslog) that forwards to Home Assistant and add that
+server under *Additional senders*.
+
+**Show obfuscated fields:** by default the gateway replaces some fields with
+`*** Confidential ***` (e.g. application IDs, matched category) and may omit
+details of anti-virus / DNS-trap events. Enabling it can provide those details –
+at the cost of more personal data (full URLs, possibly user names) in the logs.
+The integration keeps raw messages in memory only and stores just the
+whitelisted fields of detections.
+
+**Known limitation (R81.10.17):** anti-virus / DNS-trap blocks arrived only as
+the periodic *Anti Malware* status (counts) or as short records without malware
+name and host. Those blocks are therefore shown as report totals; IPS events come
+with full details.
+
+Check reception in Home Assistant: sensor *Syslog messages* (counter, products,
+dropped senders) or the action `checkpoint_spark.syslog_messages`.
+
+## 6. Test (optional)
 
 ```sh
 curl -k -X POST https://GATEWAY:4434/web-api/login \

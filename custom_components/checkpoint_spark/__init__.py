@@ -11,8 +11,6 @@ from homeassistant.loader import async_get_integration
 import logging
 from pathlib import Path
 
-from homeassistant.components.frontend import add_extra_js_url
-from homeassistant.components.http import StaticPathConfig
 from homeassistant.const import CONF_HOST
 
 from .const import (
@@ -42,10 +40,18 @@ CARD_URL = f"/{DOMAIN}/checkpoint-spark-card.js"
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_setup_services(hass)
-    # Dashboard card shipped with the integration (no separate resource needed)
+    # Dashboard card shipped with the integration (no separate resource needed).
+    # Skipped without HTTP/frontend (e.g. in tests).
+    if getattr(hass, "http", None) is None or "frontend" not in hass.config.components:
+        return True
+    from homeassistant.components.frontend import add_extra_js_url  # noqa: PLC0415
+    from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
+
     integration = await async_get_integration(hass, DOMAIN)
-    card = Path(__file__).parent / "frontend" / "checkpoint-spark-card.js"
-    await hass.http.async_register_static_paths([StaticPathConfig(CARD_URL, str(card), True)])
+    frontend = Path(__file__).parent / "frontend"
+    card = frontend / "checkpoint-spark-card.js"
+    # whole folder: card + brand icon module (loaded by the card on demand)
+    await hass.http.async_register_static_paths([StaticPathConfig(f"/{DOMAIN}", str(frontend), True)])
     # version + file time: browsers reload the card whenever the file changes (also between releases)
     mtime = int((await hass.async_add_executor_job(card.stat)).st_mtime)
     add_extra_js_url(hass, f"{CARD_URL}?v={integration.version}-{mtime}")

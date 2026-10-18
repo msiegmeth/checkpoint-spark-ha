@@ -1,8 +1,9 @@
 /*
  * Check Point Quantum Spark – interactive event viewer card (shipped with the checkpoint_spark integration).
  * No dependencies: plain custom element, HA theme variables, own SVG charts (bars + sankey).
- * Every value coming from the gateway (names, hosts, URLs) is HTML-escaped. No external requests
- * (icons are Material Design Icons that ship with Home Assistant).
+ * Every value coming from the gateway (names, hosts, URLs) is HTML-escaped. No external requests:
+ * brand logos come from checkpoint-spark-icons.js (Simple Icons, CC0) next to this file, fallback are
+ * the Material Design Icons that ship with Home Assistant.
  *
  * Config:
  *   type: custom:checkpoint-spark-card
@@ -34,7 +35,9 @@ const T = {
     firmware: "Firmware", expired: "expired", report: "Report", noDevice: "No Check Point Quantum Spark device found.",
     blockedA: "blocked", detectedA: "detected", allowedA: "allowed", other: "Other", noData: "no data",
     infHosts: "infected hosts", newInf: "newly infected", critInf: "critically infected", servers: "infected servers",
-    noReport: "not in this report",
+    noReport: "not in this report", severity: "Severity", times: "×", targets: "targets", occurrences: "Occurrences",
+    first: "first", last: "last", reportOnly: "report total only",
+    noSyslogType: "The gateway sends no single events for this type via syslog (or not with details) – only the report totals below.",
   },
   de: {
     title: "Firewall", p_hourly: "1 h", p_daily: "24 h", p_weekly: "7 Tage", p_monthly: "30 Tage",
@@ -55,7 +58,9 @@ const T = {
     firmware: "Firmware", expired: "abgelaufen", report: "Report", noDevice: "Kein Check-Point-Quantum-Spark-Gerät gefunden.",
     blockedA: "blockiert", detectedA: "erkannt", allowedA: "durchgelassen", other: "Weitere", noData: "keine Daten",
     infHosts: "infizierte Hosts", newInf: "neu infiziert", critInf: "kritisch infiziert", servers: "infizierte Server",
-    noReport: "nicht in diesem Report",
+    noReport: "nicht in diesem Report", severity: "Schwere", times: "×", targets: "Ziele", occurrences: "Vorkommen",
+    first: "erstes", last: "letztes", reportOnly: "nur Report-Summe",
+    noSyslogType: "Für diese Art schickt das Gateway per Syslog keine (oder keine verwertbaren) Einzelereignisse – nur die Report-Summen unten.",
   },
 };
 
@@ -68,6 +73,8 @@ const C = {
   blue: "var(--info-color, #42a5f5)", purple: "#ab47bc", amber: "var(--warning-color, #ffa000)", orange: "#fb8c00",
   red: "var(--error-color, #db4437)", green: "var(--success-color, #43a047)", grey: "var(--secondary-text-color)",
 };
+const SEV_RANK = { info: 0, low: 1, medium: 2, high: 3, critical: 4 };
+const sevKey = (h) => SEV[String(h.severity ?? "").toLowerCase()] || "info";
 const SEV_COLOR = { low: C.green, medium: C.amber, high: C.orange, critical: C.red, info: C.grey };
 const DIR_COLOR = { inbound: C.amber, internal: C.orange, outbound: C.red, unknown: C.grey };
 const DIR_ICON = { inbound: "mdi:arrow-down-bold", internal: "mdi:swap-horizontal-bold", outbound: "mdi:arrow-up-bold" };
@@ -81,26 +88,68 @@ const BLADE = {
   threat_emulation: "Threat Emulation",
 };
 
-/* Icons for well-known apps, sites and categories (Material Design Icons shipped with HA – no downloads).
+/* Icons for well-known apps, sites and categories: [pattern, Material Design Icon (fallback), Simple Icons slug].
+ * Brand logos come from checkpoint-spark-icons.js (Simple Icons, CC0) – loaded on demand, no external requests.
  * First match wins; unknown entries get a neutral icon per list type. */
 const ICONS = [
-  [/youtube|google video/i, "mdi:youtube"], [/netflix/i, "mdi:netflix"], [/facebook|meta\b/i, "mdi:facebook"],
-  [/instagram/i, "mdi:instagram"], [/whatsapp/i, "mdi:whatsapp"], [/spotify/i, "mdi:spotify"], [/twitch/i, "mdi:twitch"],
-  [/steam/i, "mdi:steam"], [/playstation|psn/i, "mdi:sony-playstation"], [/xbox/i, "mdi:microsoft-xbox"],
-  [/microsoft 365|office|outlook|teams/i, "mdi:microsoft-office"], [/microsoft|windows|azure|bing/i, "mdi:microsoft"],
-  [/icloud|apple|facetime|itunes/i, "mdi:apple"], [/amazon web|aws|cloudfront/i, "mdi:aws"], [/amazon|prime/i, "mdi:shopping"],
-  [/googleapis|googleusercontent|gstatic|google/i, "mdi:google"], [/dropbox/i, "mdi:dropbox"], [/github/i, "mdi:github"],
-  [/linkedin/i, "mdi:linkedin"], [/zoom|webex|conferenc/i, "mdi:video"], [/tiktok|capcut/i, "mdi:music-note"],
-  [/quic|https?|tls|ssl|tcp|udp|dns|ntp|stun|icmp|protocol/i, "mdi:lan"], [/vpn|openvpn|wireguard|ipsec/i, "mdi:vpn"],
-  [/torrent|p2p|file shar/i, "mdi:file-swap"], [/update|download|content-storage|cdn|content deliver/i, "mdi:cloud-download"],
-  [/game|gaming/i, "mdi:gamepad-variant"], [/video|stream|media|entertain/i, "mdi:play-box"], [/music|audio|radio/i, "mdi:music"],
-  [/social/i, "mdi:account-group"], [/shop/i, "mdi:cart"], [/business|econom|finance|bank/i, "mdi:briefcase"],
-  [/search|portal/i, "mdi:magnify"], [/mail/i, "mdi:email"], [/news/i, "mdi:newspaper"], [/sex|adult/i, "mdi:eye-off"],
-  [/low risk/i, "mdi:shield-check"], [/medium risk/i, "mdi:shield-alert-outline"], [/high risk|critical risk/i, "mdi:shield-alert"],
-  [/computers|internet/i, "mdi:laptop"], [/unknown/i, "mdi:help-circle-outline"],
+  [/youtube|google video/i, "mdi:youtube", "youtube"], [/netflix/i, "mdi:netflix", "netflix"],
+  [/instagram/i, "mdi:instagram", "instagram"], [/whatsapp/i, "mdi:whatsapp", "whatsapp"], [/messenger/i, "mdi:facebook-messenger", "messenger"],
+  [/threads/i, "mdi:at", "threads"], [/facebook|\bmeta\b/i, "mdi:facebook", "facebook"], [/tiktok|capcut/i, "mdi:music-note", "tiktok"],
+  [/snapchat/i, "mdi:snapchat", "snapchat"], [/pinterest/i, "mdi:pinterest", "pinterest"], [/reddit/i, "mdi:reddit", "reddit"],
+  [/telegram/i, "mdi:send", "telegram"], [/signal/i, "mdi:message-lock", "signal"], [/discord/i, "mdi:chat", "discord"],
+  [/twitter|\bx\.com/i, "mdi:alpha-x-box", "x"], [/bluesky|bsky/i, "mdi:butterfly", "bluesky"], [/mastodon/i, "mdi:mastodon", "mastodon"],
+  [/spotify/i, "mdi:spotify", "spotify"], [/deezer/i, "mdi:music", "deezer"], [/tidal/i, "mdi:music", "tidal"], [/soundcloud/i, "mdi:soundcloud", "soundcloud"],
+  [/apple music/i, "mdi:music", "applemusic"], [/apple tv/i, "mdi:apple", "appletv"], [/icloud/i, "mdi:apple-icloud", "icloud"],
+  [/apple|facetime|itunes/i, "mdi:apple", "apple"], [/twitch/i, "mdi:twitch", "twitch"], [/kick\.com|\bkick\b/i, "mdi:play-box", "kick"],
+  [/dazn/i, "mdi:soccer", "dazn"], [/vimeo/i, "mdi:vimeo", "vimeo"], [/dailymotion/i, "mdi:play-box", "dailymotion"],
+  [/plex/i, "mdi:plex", "plex"], [/jellyfin/i, "mdi:play-box", "jellyfin"], [/emby/i, "mdi:play-box", "emby"], [/\bsky\b/i, "mdi:television", "sky"],
+  [/steam|valve/i, "mdi:steam", "steam"], [/playstation|psn/i, "mdi:sony-playstation", "playstation"], [/xbox/i, "mdi:microsoft-xbox", null],
+  [/epic games|epicgames|fortnite/i, "mdi:gamepad-variant", "epicgames"], [/ubisoft/i, "mdi:gamepad-variant", "ubisoft"],
+  [/\bea\b|electronic arts|origin/i, "mdi:gamepad-variant", "ea"], [/roblox/i, "mdi:gamepad-variant", "roblox"],
+  [/microsoft 365|office|outlook|teams/i, "mdi:microsoft-office", null], [/microsoft|windows|azure|bing/i, "mdi:microsoft", null],
+  [/amazon web|aws|cloudfront/i, "mdi:aws", null], [/amazon|prime video/i, "mdi:cart", null],
+  [/google play/i, "mdi:google-play", "googleplay"], [/google cloud/i, "mdi:google-cloud", "googlecloud"], [/chrome/i, "mdi:google-chrome", "googlechrome"],
+  [/googleapis|googleusercontent|gstatic|google/i, "mdi:google", "google"], [/android/i, "mdi:android", "android"],
+  [/cloudflare/i, "mdi:cloud", "cloudflare"], [/akamai/i, "mdi:cloud", "akamai"], [/dropbox/i, "mdi:dropbox", "dropbox"],
+  [/github/i, "mdi:github", "github"], [/atlassian/i, "mdi:briefcase", "atlassian"], [/jira/i, "mdi:briefcase", "jira"], [/notion/i, "mdi:note-text", "notion"],
+  [/autodesk/i, "mdi:cube-outline", "autodesk"], [/teamviewer/i, "mdi:remote-desktop", "teamviewer"], [/anydesk/i, "mdi:remote-desktop", "anydesk"],
+  [/zoom/i, "mdi:video", "zoom"], [/linkedin/i, "mdi:linkedin", null], [/firefox/i, "mdi:firefox", "firefox"], [/mozilla/i, "mdi:firefox", "mozilla"],
+  [/duckduckgo/i, "mdi:duck", "duckduckgo"], [/paypal/i, "mdi:credit-card", "paypal"], [/ebay/i, "mdi:cart", "ebay"], [/aliexpress/i, "mdi:cart", "aliexpress"],
+  [/zalando/i, "mdi:cart", "zalando"], [/airbnb/i, "mdi:home", "airbnb"], [/uber/i, "mdi:car", "uber"], [/sonos/i, "mdi:speaker", "sonos"],
+  [/synology/i, "mdi:nas", "synology"], [/home ?assistant|nabu ?casa/i, "mdi:home-assistant", "homeassistant"], [/tailscale/i, "mdi:vpn", "tailscale"],
+  [/ubiquiti|unifi/i, "mdi:access-point", "ubiquiti"], [/openvpn/i, "mdi:vpn", "openvpn"], [/wireguard/i, "mdi:vpn", "wireguard"],
+  [/bittorrent|torrent/i, "mdi:file-swap", "bittorrent"],
+  [/quic|https?|tls|ssl|tcp|udp|dns|ntp|stun|icmp|protocol/i, "mdi:lan", null], [/vpn|ipsec/i, "mdi:vpn", null],
+  [/p2p|file shar/i, "mdi:file-swap", null], [/update|download|content-storage|cdn|content deliver/i, "mdi:cloud-download", null],
+  [/game|gaming/i, "mdi:gamepad-variant", null], [/video|stream|media|entertain/i, "mdi:play-box", null], [/music|audio|radio/i, "mdi:music", null],
+  [/social/i, "mdi:account-group", null], [/shop/i, "mdi:cart", null], [/business|econom|finance|bank/i, "mdi:briefcase", null],
+  [/search|portal/i, "mdi:magnify", null], [/mail/i, "mdi:email", null], [/news/i, "mdi:newspaper", null], [/sex|adult/i, "mdi:eye-off", null],
+  [/low risk/i, "mdi:shield-check", null], [/medium risk/i, "mdi:shield-alert-outline", null], [/high risk|critical risk/i, "mdi:shield-alert", null],
+  [/computers|internet/i, "mdi:laptop", null], [/unknown/i, "mdi:help-circle-outline", null],
 ];
 const ICON_DEFAULT = { apps: "mdi:application-outline", sites: "mdi:web", categories: "mdi:shape-outline" };
-const iconFor = (name, kind) => (ICONS.find(([re]) => re.test(name || "")) || [null, ICON_DEFAULT[kind] || "mdi:circle-small"])[1];
+
+// Simple Icons, loaded once on demand (module next to this file)
+let SI = null;
+const SI_READY = import(new URL(`./checkpoint-spark-icons.js?v=${VERSION}`, import.meta.url))
+  .then((m) => { SI = m.SIMPLE_ICONS || {}; })
+  .catch(() => { SI = {}; });
+
+/** Brand colours that are too dark/light for one of the themes use the text colour instead. */
+function brandFill(hex) {
+  const n = parseInt(hex, 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const l = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return l < 0.2 || l > 0.85 ? "currentColor" : `#${hex}`;
+}
+
+/** Icon markup: brand logo (Simple Icons) if available, otherwise a Material Design Icon. */
+function iconHtml(name, kind) {
+  const hit = ICONS.find(([re]) => re.test(name || ""));
+  const si = hit && hit[2] && SI && SI[hit[2]];
+  if (si) return `<svg class="si" viewBox="0 0 24 24" role="img"><path fill="${brandFill(si[0])}" d="${si[1]}"/></svg>`;
+  return `<ha-icon icon="${hit ? hit[1] : ICON_DEFAULT[kind] || "mdi:circle-small"}"></ha-icon>`;
+}
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -145,9 +194,10 @@ class CheckpointSparkCard extends HTMLElement {
     this._config = { period: "daily", resolvers: [], names: {}, ...config };
     this._st = this._st || {
       period: this._config.period, tab: "traffic", list: "apps", metric: "volume",
-      type: "all", dir: "all", open: new Set(),
+      type: "all", dir: "all", sev: "all", open: new Set(),
     };
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+    if (!SI) SI_READY.then(() => this._render());
     this._render();
   }
 
@@ -268,6 +318,7 @@ class CheckpointSparkCard extends HTMLElement {
     on("[data-metric]", (el) => { st.metric = el.dataset.metric; this._render(); });
     on("[data-type]", (el) => { st.type = el.dataset.type; st.open.clear(); this._render(); });
     on("[data-dir]", (el) => { st.dir = el.dataset.dir; st.open.clear(); this._render(); });
+    on("[data-sev]", (el) => { st.sev = el.dataset.sev; st.open.clear(); this._render(); });
     on("[data-ev]", (el) => {
       const k = el.dataset.ev;
       st.open.has(k) ? st.open.delete(k) : st.open.add(k);
@@ -327,7 +378,7 @@ class CheckpointSparkCard extends HTMLElement {
     const key = st.metric === "volume" ? "bytes" : "sessions";
     const max = Math.max(1, ...items.map((i) => i[key] || 0));
     const color = { apps: PALETTE[0], sites: PALETTE[2], categories: PALETTE[1] }[st.list];
-    const rows = items.slice(0, 10).map((i) => `<tr><td class="ic"><ha-icon icon="${iconFor(i.name + " " + (i.category || ""), st.list)}"></ha-icon></td>
+    const rows = items.slice(0, 10).map((i) => `<tr><td class="ic">${iconHtml(i.name + " " + (i.category || ""), st.list)}</td>
         <td class="n">${esc(i.name)}${i.category ? ` <span class="muted small">${esc(i.category)}</span>` : ""}${this._bar(i[key] || 0, max, color)}</td>
         <td class="r">${st.metric === "volume" ? this._bytes(i.bytes) : this._num(i.sessions)}</td>
         <td class="r muted small">${st.metric === "volume" ? `↓ ${this._bytes(i.down_bytes)}<br>↑ ${this._bytes(i.up_bytes)}` : this._bytes(i.bytes)}</td></tr>`);
@@ -339,7 +390,7 @@ class CheckpointSparkCard extends HTMLElement {
         <div class="seg sm">${[["volume", t.byVolume], ["sessions", t.bySessions]].map(([k, l]) => `<button class="${st.metric === k ? "on" : ""}" data-metric="${k}">${esc(l)}</button>`).join("")}</div>
       </div>
       ${this._table(["", t.name, st.metric === "volume" ? t.volume : t.sessions, ""], rows)}
-      ${risky ? `<h4>${esc(t.highRisk)}</h4>` + this._table(["", t.name, t.sessions, ""], risky.map((r) => `<tr><td class="ic"><ha-icon icon="${iconFor(r.name + " " + (r.category || ""), "apps")}"></ha-icon></td><td class="n">${esc(r.name)}${r.category ? ` <span class="muted small">${esc(r.category)}</span>` : ""}</td><td class="r">${this._num(r.sessions)}</td><td class="r">${this._sev(r.risk)}</td></tr>`)) : ""}`;
+      ${risky ? `<h4>${esc(t.highRisk)}</h4>` + this._table(["", t.name, t.sessions, ""], risky.map((r) => `<tr><td class="ic">${iconHtml(r.name + " " + (r.category || ""), "apps")}</td><td class="n">${esc(r.name)}${r.category ? ` <span class="muted small">${esc(r.category)}</span>` : ""}</td><td class="r">${this._num(r.sessions)}</td><td class="r">${this._sev(r.risk)}</td></tr>`)) : ""}`;
   }
 
   _bar(v, max, color) { return `<div class="bar"><div style="width:${Math.max(2, Math.round((100 * v) / (max || 1)))}%;background:${color}"></div></div>`; }
@@ -442,18 +493,33 @@ class CheckpointSparkCard extends HTMLElement {
     const t = this._t, st = this._st;
     const hasSyslog = !!this._s("syslog_messages") || !!this._s("detections_30d");
     const evAll = this._events();
-    const ev = evAll.filter((h) => (st.type === "all" || evType(h) === st.type) && (st.dir === "all" || (h.direction || "unknown") === st.dir));
-    const count = (pred) => evAll.filter(pred).length;
-    const typeBtn = (k, label, color, n) => `<button class="${st.type === k ? "on" : ""}" data-type="${k}" style="--c:${color}">${esc(label)}<span class="cnt">${n}</span></button>`;
-    const dirBtn = (k, label, n) => `<button class="${st.dir === k ? "on" : ""}" data-dir="${k}" style="--c:${DIR_COLOR[k] || C.grey}">${DIR_ICON[k] ? `<ha-icon icon="${DIR_ICON[k]}"></ha-icon>` : ""}${esc(label)}<span class="cnt">${n}</span></button>`;
+    const match = (h, skip) => (skip === "type" || st.type === "all" || evType(h) === st.type)
+      && (skip === "dir" || st.dir === "all" || (h.direction || "unknown") === st.dir)
+      && (skip === "sev" || st.sev === "all" || sevKey(h) === st.sev);
+    const ev = evAll.filter((h) => match(h));
+    // counts per chip respect the other two filters
+    const count = (skip, pred) => evAll.filter((h) => match(h, skip) && pred(h)).length;
+    const report = { malware: this._v(this._pk("virus_incidents")), bot: this._v(this._pk("bot_incidents")) };
+    const typeBtn = (k, label, color) => {
+      const n = k === "all" ? count("type", () => true) : count("type", (h) => evType(h) === k);
+      const r = report[k];
+      const badge = n === 0 && r ? `<span class="cnt" title="${esc(t.reportOnly)}">Σ ${this._num(r)}</span>` : `<span class="cnt">${n}</span>`;
+      return `<button class="${st.type === k ? "on" : ""}" data-type="${k}" style="--c:${color}">${esc(label)}${badge}</button>`;
+    };
+    const dirBtn = (k, label) => `<button class="${st.dir === k ? "on" : ""}" data-dir="${k}" style="--c:${DIR_COLOR[k] || C.grey}">${DIR_ICON[k] ? `<ha-icon icon="${DIR_ICON[k]}"></ha-icon>` : ""}${esc(label)}<span class="cnt">${k === "all" ? count("dir", () => true) : count("dir", (h) => (h.direction || "unknown") === k)}</span></button>`;
+    const sevBtn = (k, label) => `<button class="${st.sev === k ? "on" : ""}" data-sev="${k}" style="--c:${SEV_COLOR[k] || C.grey}">${esc(label)}<span class="cnt">${k === "all" ? count("sev", () => true) : count("sev", (h) => sevKey(h) === k)}</span></button>`;
+    const sevTxt = SEV_TXT[this._lang];
     const filters = `<div class="filters">
       <span class="fl">${esc(t.type)}</span><div class="seg sm chips-seg">
-        ${typeBtn("all", t.all, C.grey, evAll.length)}${typeBtn("ips", t.ips, TYPE_COLOR.ips, count((h) => evType(h) === "ips"))}
-        ${typeBtn("malware", t.blocked, TYPE_COLOR.malware, count((h) => evType(h) === "malware"))}${typeBtn("bot", t.bots, TYPE_COLOR.bot, count((h) => evType(h) === "bot"))}</div>
+        ${typeBtn("all", t.all, C.grey)}${typeBtn("ips", t.ips, TYPE_COLOR.ips)}${typeBtn("malware", t.blocked, TYPE_COLOR.malware)}${typeBtn("bot", t.bots, TYPE_COLOR.bot)}</div>
       <span class="fl">${esc(t.dir)}</span><div class="seg sm chips-seg">
-        ${dirBtn("all", t.all, evAll.length)}${["inbound", "internal", "outbound"].map((d) => dirBtn(d, t[d], count((h) => h.direction === d))).join("")}</div>
+        ${dirBtn("all", t.all)}${["inbound", "internal", "outbound"].map((d) => dirBtn(d, t[d])).join("")}</div>
+      <span class="fl">${esc(t.severity)}</span><div class="seg sm chips-seg">
+        ${sevBtn("all", t.all)}${["critical", "high", "medium", "low"].map((k) => sevBtn(k, sevTxt[k])).join("")}</div>
     </div>`;
+    const noType = (st.type === "malware" || st.type === "bot") && count("type", (h) => evType(h) === st.type) === 0;
     const events = !hasSyslog ? `<div class="hint">${esc(t.noSyslog)}</div>`
+      : noType ? `<div class="hint">${esc(t.noSyslogType)}</div>`
       : `<h4>${esc(t.flow)}: ${esc(t.dir)} → ${esc(t.type)} → ${esc(t.action)}</h4>${this._threatSankey(ev)}
          <h4>${esc(t.events)} · ${ev.length}</h4>${this._eventTable(ev)}`;
     return filters + events + this._reportThreats();
@@ -474,30 +540,48 @@ class CheckpointSparkCard extends HTMLElement {
     return this._sankey([dirs, types, acts], links, (v) => this._num(v));
   }
 
+  /** Events grouped by type + name + source host: one row per "same alert from the same host". */
   _eventTable(ev) {
     const t = this._t, st = this._st;
     if (!ev.length) return `<div class="muted pad">${esc(t.noEvents)}</div>`;
-    const rows = ev.slice(0, 50).map((h) => {
-      const key = h.time + "|" + (h.name || "") + "|" + (h.src || "") + "|" + (h.dst || "");
-      const open = st.open.has(key);
-      const cves = String(h.cve || "").split(",").map((c) => c.trim()).filter((c) => /^CVE-\d+-\d+$/.test(c));
+    const groups = new Map();
+    for (const h of ev) {
       const type = evType(h);
+      const key = `${type}|${h.name || h.attack || ""}|${h.src || ""}`;
+      let g = groups.get(key);
+      if (!g) groups.set(key, (g = { key, type, h, items: [], dsts: new Map(), dirs: new Set(), sev: "info" }));
+      g.items.push(h);
+      g.dsts.set(h.dst || "–", (g.dsts.get(h.dst || "–") || 0) + 1);
+      if (h.direction) g.dirs.add(h.direction);
+      if (SEV_RANK[sevKey(h)] > SEV_RANK[g.sev]) g.sev = sevKey(h);
+    }
+    const list = [...groups.values()].sort((a, b) => new Date(b.items[0].time) - new Date(a.items[0].time));
+    const rows = list.slice(0, 40).map((g) => {
+      const h = g.h, last = g.items[0], first = g.items[g.items.length - 1];
+      const open = st.open.has(g.key);
+      const cves = String(h.cve || "").split(",").map((c) => c.trim()).filter((c) => /^CVE-\d+-\d+$/.test(c));
+      const typeLabel = g.type === "ips" ? t.ips : g.type === "bot" ? t.bots : t.blocked;
+      const many = g.items.length > 1;
+      const when = many ? `${esc(this._time(last.time))}<div class="muted small">${esc(t.first)} ${esc(this._time(first.time))}</div>` : esc(this._time(last.time));
+      const dsts = [...g.dsts.entries()].sort((a, b) => b[1] - a[1]);
       const detail = open ? `<tr class="det"><td colspan="4">
           <div class="kv"><span>${esc(t.src)}</span><b>${this._who(h.src)}</b></div>
-          <div class="kv"><span>${esc(t.dst)}</span><b>${this._who(h.dst)}</b></div>
-          <div class="kv"><span>${esc(t.dir)}</span><b>${this._dir(h.direction) || "–"}</b></div>
-          <div class="kv"><span>${esc(t.action)}</span><b>${esc(h.action || "–")}</b></div>
+          <div class="kv"><span>${esc(t.dst)}</span><b>${dsts.map(([d, n]) => `${this._who(d === "–" ? "" : d)}${many ? ` <span class="muted small">×${n}</span>` : ""}`).join("<br>")}</b></div>
+          <div class="kv"><span>${esc(t.dir)}</span><b>${[...g.dirs].map((d) => this._dir(d)).join(" ") || "–"}</b></div>
+          <div class="kv"><span>${esc(t.action)}</span><b>${esc([...new Set(g.items.map((i) => i.action || "–"))].join(", "))}</b></div>
           ${h.attack && h.attack !== h.name ? `<div class="kv"><span>${esc(t.type)}</span><b>${esc(h.attack)}</b></div>` : ""}
           ${h.product ? `<div class="kv"><span>Blade</span><b>${esc(h.product)}</b></div>` : ""}
           ${cves.length ? `<div class="kv"><span>CVE</span><b>${cves.map((c) => `<a href="https://nvd.nist.gov/vuln/detail/${c}" target="_blank" rel="noopener">${c}</a>`).join(" · ")}</b></div>` : ""}
-          ${h.resource ? `<div class="kv"><span>${esc(t.requested)}</span></div><code>${esc(h.resource)}</code>` : ""}
-          ${type === "malware" ? `<div class="muted small pad">${esc(t.dnsHint)}</div>` : ""}
+          ${last.resource ? `<div class="kv"><span>${esc(t.requested)}</span></div><code>${esc(last.resource)}</code>` : ""}
+          ${g.type === "malware" ? `<div class="muted small pad">${esc(t.dnsHint)}</div>` : ""}
+          ${many ? `<h4>${esc(t.occurrences)} · ${g.items.length}</h4><table class="occ">${g.items.slice(0, 20).map((i) =>
+            `<tr><td class="nw">${esc(this._time(i.time))}</td><td class="n">${this._who(i.dst)}</td><td class="r">${this._dir(i.direction)}</td><td class="r muted small">${esc(i.action || "")}</td></tr>`).join("")}</table>` : ""}
         </td></tr>` : "";
-      return `<tr class="click ${open ? "open" : ""}" data-ev="${esc(key)}">
-          <td class="nw">${esc(this._time(h.time))}</td>
-          <td class="n">${this._pill(type === "ips" ? t.ips : type === "bot" ? t.bots : t.blocked, TYPE_COLOR[type])} ${esc(h.name || h.attack || "–")}
-            <div class="small">${this._dir(h.direction)} <span class="muted">${this._who(h.src)}</span></div></td>
-          <td class="r">${this._sev(h.severity)}</td><td class="r chev">${open ? "▾" : "▸"}</td></tr>${detail}`;
+      return `<tr class="click ${open ? "open" : ""}" data-ev="${esc(g.key)}">
+          <td class="nw">${when}</td>
+          <td class="n">${this._pill(typeLabel, TYPE_COLOR[g.type])} ${esc(h.name || h.attack || "–")}${many ? ` <span class="pill" style="--c:var(--primary-color)">×${g.items.length}</span>` : ""}
+            <div class="small">${[...g.dirs].map((d) => this._dir(d)).join(" ")} <span class="muted">${this._who(h.src)}${dsts.length > 1 ? ` · ${dsts.length} ${esc(t.targets)}` : ""}</span></div></td>
+          <td class="r">${this._sev(g.sev)}</td><td class="r chev">${open ? "▾" : "▸"}</td></tr>${detail}`;
     });
     return `<table><tr><th>${esc(t.time)}</th><th>${esc(t.name)}</th><th class="r">${esc(t.sev)}</th><th></th></tr>${rows.join("")}</table>`;
   }
@@ -590,12 +674,14 @@ const CSS = `
   th { text-align: left; font-size: 11px; font-weight: 500; color: var(--secondary-text-color); padding: 4px 6px; }
   td { padding: 6px; border-top: 1px solid var(--divider-color); vertical-align: top; }
   td.ic { width: 22px; padding-right: 0; color: var(--secondary-text-color); } td.ic ha-icon { --mdc-icon-size: 18px; }
+  svg.si { width: 18px; height: 18px; display: block; margin-top: 1px; color: var(--primary-text-color); }
   .r { text-align: right; white-space: nowrap; } .nw { white-space: nowrap; }
   td.n { width: 100%; word-break: break-word; }
   tr.click { cursor: pointer; } tr.click:hover td { background: var(--secondary-background-color, rgba(127,127,127,.08)); }
   tr.open td { background: var(--secondary-background-color, rgba(127,127,127,.08)); }
   tr.det td { border-top: none; background: var(--secondary-background-color, rgba(127,127,127,.06)); padding: 2px 12px 10px; }
   .chev { color: var(--secondary-text-color); width: 1%; }
+  table.occ { font-size: 12px; } table.occ td { padding: 3px 4px; }
   .bar { height: 4px; border-radius: 2px; margin-top: 4px; background: var(--divider-color); }
   .bar > div { height: 4px; border-radius: 2px; }
   .kv { display: flex; justify-content: space-between; gap: 12px; padding: 6px 2px; border-top: 1px solid var(--divider-color); font-size: 14px; }
