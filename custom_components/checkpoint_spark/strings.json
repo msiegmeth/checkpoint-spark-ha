@@ -331,6 +331,36 @@
       },
       "telemetry_series": {
         "name": "Telemetry series"
+      },
+      "cpu_load": {
+        "name": "CPU load"
+      },
+      "memory_load": {
+        "name": "Memory load"
+      },
+      "boot_time": {
+        "name": "Booted"
+      },
+      "connections": {
+        "name": "Connections"
+      },
+      "connection_rate": {
+        "name": "New connections"
+      },
+      "wan_download": {
+        "name": "WAN download"
+      },
+      "wan_upload": {
+        "name": "WAN upload"
+      },
+      "wan_latency": {
+        "name": "WAN latency"
+      },
+      "wan_jitter": {
+        "name": "WAN jitter"
+      },
+      "wan_packet_loss": {
+        "name": "WAN packet loss"
       }
     },
     "binary_sensor": {

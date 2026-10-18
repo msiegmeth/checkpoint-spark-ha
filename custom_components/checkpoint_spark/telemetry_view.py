@@ -103,3 +103,25 @@ class TelemetryView(HomeAssistantView):
         except (binascii.Error, UnicodeDecodeError):
             return False
         return hmac.compare_digest(got_user, user) & hmac.compare_digest(got_pw, password)
+
+
+class TelemetryStatusView(HomeAssistantView):
+    """The gateway's "Test Connection" button GETs /status on the server root (Prometheus style).
+
+    Answered with 200 only for a gateway that has telemetry enabled; everyone else gets 404,
+    so this does not expose anything new.
+    """
+
+    url = "/status"
+    name = f"{DOMAIN}:telemetry_status"
+    requires_auth = False
+    cors_allowed = False
+
+    async def get(self, request: web.Request) -> web.Response:
+        hass = request.app[KEY_HASS]
+        remote = request.remote or ""
+        ok = any(
+            getattr(e.runtime_data, "telemetry", None) is not None and remote in e.runtime_data.telemetry_allowed
+            for e in hass.config_entries.async_loaded_entries(DOMAIN)
+        )
+        return web.Response(status=200, text="OK") if ok else web.Response(status=404)

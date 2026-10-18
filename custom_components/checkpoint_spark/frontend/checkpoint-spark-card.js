@@ -38,6 +38,8 @@ const T = {
     noReport: "not in this report", severity: "Severity", times: "×", targets: "targets", occurrences: "Occurrences",
     first: "first", last: "last", reportOnly: "report total only", loading: "loading…",
     temps: "Temperature", ram: "Memory", noStats: "No statistics yet for this period.",
+    cpuLoad: "CPU load", wan: "Internet line", latency: "Latency / jitter", conns: "Connections", booted: "Running since",
+    perf: "Load (OpenTelemetry)", noTelemetry: "Enable OpenTelemetry in the integration options for CPU load, throughput and line quality.",
     noSyslogType: "The gateway sends no single events for this type via syslog (or not with details) – only the report totals below.",
   },
   de: {
@@ -62,6 +64,8 @@ const T = {
     noReport: "nicht in diesem Report", severity: "Schwere", times: "×", targets: "Ziele", occurrences: "Vorkommen",
     first: "erstes", last: "letztes", reportOnly: "nur Report-Summe", loading: "lädt…",
     temps: "Temperatur", ram: "Arbeitsspeicher", noStats: "Für diesen Zeitraum gibt es noch keine Statistik.",
+    cpuLoad: "CPU-Auslastung", wan: "Internetleitung", latency: "Latenz / Jitter", conns: "Verbindungen", booted: "Läuft seit",
+    perf: "Auslastung (OpenTelemetry)", noTelemetry: "OpenTelemetry in den Optionen der Integration einschalten, dann gibt es CPU-Auslastung, Durchsatz und Leitungsqualität.",
     noSyslogType: "Für diese Art schickt das Gateway per Syslog keine (oder keine verwertbaren) Einzelereignisse – nur die Report-Summen unten.",
   },
 };
@@ -643,7 +647,8 @@ class CheckpointSparkCard extends HTMLElement {
   /* ------------------------------------------------ system statistics -- */
   /** Long-term statistics (recorder) for the system charts; cached per period for 5 minutes. */
   _loadStats() {
-    const ids = ["cpu_temperature", "ddr_temperature", "memory_used"].map((k) => this._map[k]).filter(Boolean);
+    const ids = ["cpu_temperature", "ddr_temperature", "memory_used", "cpu_load", "memory_load", "wan_download",
+      "wan_upload", "wan_latency", "wan_jitter", "connections"].map((k) => this._map[k]).filter(Boolean);
     if (!ids.length || !this._hass?.callWS) return;
     const period = this._st.period;
     const c = this._stats;
@@ -716,10 +721,36 @@ class CheckpointSparkCard extends HTMLElement {
       kv(t.contracts, exp && !isNaN(new Date(exp.state)) ? `${esc(new Date(exp.state).toLocaleDateString(this._loc))}${expired.length ? ` <span class="muted">· ${expired.length} ${esc(t.expired)}</span>` : ""}` : "–") +
       kv(t.firmware, esc(this._s("firmware")?.state || "–")) +
       kv(t.report, esc(this._time(this._s(this._pk("report_time"))?.state))) +
+      this._perf() +
       `<h4>${esc(t.temps)}</h4>` + this._lineChart([
         { id: this._map.cpu_temperature, label: "CPU", color: "#fb8c00" },
         { id: this._map.ddr_temperature, label: "DDR", color: "#ffca28" }], "°C") +
-      `<h4>${esc(t.ram)}</h4>` + this._lineChart([{ id: this._map.memory_used, label: "RAM", color: "#ab47bc" }], "MB");
+      (this._map.memory_load ? "" : `<h4>${esc(t.ram)}</h4>` + this._lineChart([{ id: this._map.memory_used, label: "RAM", color: "#ab47bc" }], "MB"));
+  }
+
+  /** Load section from OpenTelemetry sensors (CPU, memory, WAN throughput, line quality). */
+  _perf() {
+    const t = this._t;
+    if (!this._map.cpu_load) return `<div class="hint">${esc(t.noTelemetry)}</div>`;
+    const v = (k, d = 0) => this._num(this._v(k), d);
+    const boot = this._s("boot_time");
+    const tiles = [
+      [t.cpuLoad, `${v("cpu_load")} %`, "#ef5350"], [t.ram, `${v("memory_load")} %`, "#ab47bc"],
+      ["WAN ↓ / ↑", `${v("wan_download", 1)} / ${v("wan_upload", 1)} Mbit/s`, "#42a5f5"],
+      [t.latency, `${v("wan_latency")} / ${v("wan_jitter")} ms`, "#26a69a"], [t.conns, v("connections"), "#7e57c2"],
+      [t.booted, boot && !isNaN(new Date(boot.state)) ? esc(this._time(boot.state)) : "–", "var(--secondary-text-color)"],
+    ];
+    return `<h4>${esc(t.perf)}</h4><div class="sums">${tiles.map(([l, val, c]) =>
+      `<div class="sum"><div class="v" style="color:${c};font-size:17px">${val}</div><div class="l">${esc(l)}</div></div>`).join("")}</div>
+      <h4>${esc(t.cpuLoad)} / ${esc(t.ram)}</h4>` + this._lineChart([
+        { id: this._map.cpu_load, label: "CPU", color: "#ef5350" },
+        { id: this._map.memory_load, label: "RAM", color: "#ab47bc" }], "%") +
+      `<h4>${esc(t.wan)}</h4>` + this._lineChart([
+        { id: this._map.wan_download, label: "↓", color: "#42a5f5" },
+        { id: this._map.wan_upload, label: "↑", color: "#26a69a" }], "Mbit/s", 1) +
+      `<h4>${esc(t.latency)}</h4>` + this._lineChart([
+        { id: this._map.wan_latency, label: this._lang === "de" ? "Latenz" : "Latency", color: "#ffa000" },
+        { id: this._map.wan_jitter, label: "Jitter", color: "#8d6e63" }], "ms");
   }
 }
 

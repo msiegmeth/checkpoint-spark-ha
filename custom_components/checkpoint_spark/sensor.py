@@ -16,8 +16,10 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
+    UnitOfDataRate,
     UnitOfInformation,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
@@ -564,6 +566,140 @@ class SparkLogSensor(SparkEntity, SensorEntity):
         return {}
 
 
+# --------------------------------------------------------------- telemetry values --
+def _tm_cpu(st) -> tuple[float | None, dict]:
+    idle = {lab.get("cpu"): v for lab, v in st.values("system_cpu_utilization") if lab.get("state") == "idle"}
+    if not idle:
+        return None, {}
+    cores = {f"core_{k}": round(100 - v, 1) for k, v in sorted(idle.items())}
+    return round(sum(cores.values()) / len(cores), 1), cores
+
+
+def _tm_memory(st) -> tuple[float | None, dict]:
+    used = next((v for lab, v in st.values("system_memory_usage") if lab.get("state") == "used"), None)
+    limit = next((v for _, v in st.values("system_memory_limit")), None)
+    if used is None or not limit:
+        return None, {}
+    return round(100 * used / limit, 1), {"used_mb": round(used / 1e6), "total_mb": round(limit / 1e6)}
+
+
+def _tm_interfaces(st) -> dict[str, dict[str, float]]:
+    out: dict[str, dict[str, float]] = {}
+    for key, metric in (("rx_mbit", "system_network_interface_rx_throughput_bs"),
+                        ("tx_mbit", "system_network_interface_tx_throughput_bs")):
+        for lab, v in st.values(metric):
+            name = lab.get("if_name") or lab.get("name")
+            if name and name not in ("lo", "TOTAL"):
+                out.setdefault(name, {})[key] = round(v / 1e6, 2)
+    return out
+
+
+def _tm_wan(st, key: str) -> float | None:
+    ifs = _tm_interfaces(st)
+    for name in ("ppp0", "WAN"):
+        if name in ifs and key in ifs[name]:
+            return ifs[name][key]
+    return None
+
+
+def _tm_sdwan(st, metric: str) -> tuple[float | None, dict]:
+    vals = st.values(metric)
+    if not vals:
+        return None, {}
+    per_isp: dict[str, float] = {}
+    for lab, v in vals:
+        per_isp.setdefault(lab.get("isp_name", "?"), v)
+    first = next(iter(per_isp.values()))
+    return first, {"per_isp": per_isp}
+
+
+def _tm_sum(st, metric: str, label: str) -> tuple[float | None, dict]:
+    vals = st.values(metric)
+    if not vals:
+        return None, {}
+    return sum(v for _, v in vals), {lab.get(label, "?"): v for lab, v in vals}
+
+
+def _tm_boot(st):
+    up = next((v for _, v in st.values("system_uptime")), None)
+    if up is None or st.last_received is None:
+        return None, {}
+    return (st.last_received - timedelta(seconds=up)).replace(second=0, microsecond=0), {}
+
+
+@dataclass(frozen=True, kw_only=True)
+class SparkTelemetryDescription(SensorEntityDescription):
+    """Value derived from the gateway's OpenTelemetry metrics."""
+
+    value_fn: Callable[[Any], tuple[Any, dict]]
+
+
+TELEMETRY_SENSORS: tuple[SparkTelemetryDescription, ...] = (
+    SparkTelemetryDescription(key="cpu_load", icon="mdi:cpu-64-bit", native_unit_of_measurement=PERCENTAGE,
+                              state_class=SensorStateClass.MEASUREMENT, suggested_display_precision=0, value_fn=_tm_cpu),
+    SparkTelemetryDescription(key="memory_load", icon="mdi:memory", native_unit_of_measurement=PERCENTAGE,
+                              state_class=SensorStateClass.MEASUREMENT, suggested_display_precision=0, value_fn=_tm_memory),
+    SparkTelemetryDescription(key="boot_time", icon="mdi:restart", device_class=SensorDeviceClass.TIMESTAMP,
+                              entity_category=EntityCategory.DIAGNOSTIC, value_fn=_tm_boot),
+    SparkTelemetryDescription(key="connections", icon="mdi:connection", state_class=SensorStateClass.MEASUREMENT,
+                              value_fn=lambda st: _tm_sum(st, "system_network_connections", "component")),
+    SparkTelemetryDescription(key="connection_rate", icon="mdi:speedometer", native_unit_of_measurement="1/s",
+                              state_class=SensorStateClass.MEASUREMENT,
+                              value_fn=lambda st: _tm_sum(st, "system_network_connections_rate", "component")),
+    SparkTelemetryDescription(key="wan_download", icon="mdi:download-network", device_class=SensorDeviceClass.DATA_RATE,
+                              native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND, state_class=SensorStateClass.MEASUREMENT,
+                              suggested_display_precision=1,
+                              value_fn=lambda st: (_tm_wan(st, "rx_mbit"), {"interfaces": _tm_interfaces(st)})),
+    SparkTelemetryDescription(key="wan_upload", icon="mdi:upload-network", device_class=SensorDeviceClass.DATA_RATE,
+                              native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND, state_class=SensorStateClass.MEASUREMENT,
+                              suggested_display_precision=1, value_fn=lambda st: (_tm_wan(st, "tx_mbit"), {})),
+    SparkTelemetryDescription(key="wan_latency", icon="mdi:timer-outline", device_class=SensorDeviceClass.DURATION,
+                              native_unit_of_measurement=UnitOfTime.MILLISECONDS, state_class=SensorStateClass.MEASUREMENT,
+                              value_fn=lambda st: _tm_sdwan(st, "sdwan_modules_latency")),
+    SparkTelemetryDescription(key="wan_jitter", icon="mdi:sine-wave", device_class=SensorDeviceClass.DURATION,
+                              native_unit_of_measurement=UnitOfTime.MILLISECONDS, state_class=SensorStateClass.MEASUREMENT,
+                              value_fn=lambda st: _tm_sdwan(st, "sdwan_modules_jitter")),
+    SparkTelemetryDescription(key="wan_packet_loss", icon="mdi:package-variant-remove", native_unit_of_measurement=PERCENTAGE,
+                              state_class=SensorStateClass.MEASUREMENT,
+                              value_fn=lambda st: _tm_sdwan(st, "sdwan_modules_packetloss")),
+)
+
+
+class SparkTelemetryValueSensor(SparkEntity, SensorEntity):
+    """Sensor fed by the OpenTelemetry receiver."""
+
+    entity_description: SparkTelemetryDescription
+    _unrecorded_attributes = frozenset({"interfaces", "per_isp"})
+
+    def __init__(self, coordinator: SparkCoordinator, description: SparkTelemetryDescription) -> None:
+        super().__init__(coordinator, description.key)
+        self.entity_description = description
+        self._attr_translation_key = description.key
+        self._pending = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        store = self.coordinator.telemetry
+        store.listeners.append(self._message)
+        self.async_on_remove(lambda: store.listeners.remove(self._message))
+
+    def _message(self) -> None:
+        if self._pending is None:
+            self._pending = self.hass.loop.call_later(10, self._write)
+
+    def _write(self) -> None:
+        self._pending = None
+        self.async_write_ha_state()
+
+    @property
+    def native_value(self) -> Any:
+        return self.entity_description.value_fn(self.coordinator.telemetry)[0]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        return self.entity_description.value_fn(self.coordinator.telemetry)[1] or None
+
+
 class SparkTelemetrySensor(SparkEntity, SensorEntity):
     """Time series received via OpenTelemetry (collection stage)."""
 
@@ -631,6 +767,7 @@ async def async_setup_entry(
     )
     if coordinator.telemetry is not None:
         entities.append(SparkTelemetrySensor(coordinator))
+        entities.extend(SparkTelemetryValueSensor(coordinator, d) for d in TELEMETRY_SENSORS)
     if coordinator.syslog:
         entities.append(SparkSyslogSensor(coordinator))
         entities += [

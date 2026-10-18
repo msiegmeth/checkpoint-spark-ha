@@ -331,6 +331,36 @@
       },
       "telemetry_series": {
         "name": "Telemetrie-Zeitreihen"
+      },
+      "cpu_load": {
+        "name": "CPU-Auslastung"
+      },
+      "memory_load": {
+        "name": "Arbeitsspeicher-Auslastung"
+      },
+      "boot_time": {
+        "name": "Gestartet"
+      },
+      "connections": {
+        "name": "Verbindungen"
+      },
+      "connection_rate": {
+        "name": "Neue Verbindungen"
+      },
+      "wan_download": {
+        "name": "WAN-Download"
+      },
+      "wan_upload": {
+        "name": "WAN-Upload"
+      },
+      "wan_latency": {
+        "name": "WAN-Latenz"
+      },
+      "wan_jitter": {
+        "name": "WAN-Jitter"
+      },
+      "wan_packet_loss": {
+        "name": "WAN-Paketverlust"
       }
     },
     "binary_sensor": {

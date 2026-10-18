@@ -29,12 +29,15 @@ All notable changes are documented here. Format based on
   - Brand icons from Simple Icons (bundled, CC0) with Material Design Icons as
     fallback
   - Follows the HA theme (light/dark), English and German, no external requests
-- **OpenTelemetry receiver (preview):** the gateway's Skyline/OpenTelemetry
-  export (Prometheus remote write) can be sent to
-  `/api/checkpoint_spark/telemetry` – basic auth, gateway IP only, size limits,
-  decoded without extra packages. Sensor *Telemetry series* and action
-  `checkpoint_spark.telemetry_metrics` show what arrives; dedicated sensors
-  (e.g. CPU load) follow once real metrics are analysed.
+- **OpenTelemetry receiver:** the gateway's Skyline/OpenTelemetry export
+  (Prometheus remote write) can be sent to `/api/checkpoint_spark/telemetry` –
+  basic auth, gateway IP only, size limits, decoded without extra packages
+  (snappy block/stream, gzip). New sensors: **CPU load**, **memory load**,
+  **booted**, **connections**, **new connections/s**, **WAN download/upload**
+  (Mbit/s), **WAN latency / jitter / packet loss**. The card's System tab shows
+  them with charts. The gateway's *Test Connection* button (GET /status) is
+  answered for the configured gateway. Raw metrics: sensor *Telemetry series*,
+  action `checkpoint_spark.telemetry_metrics`.
 - Documentation: which syslog settings to use on the gateway
   (system + security logs, UDP, optional "show obfuscated fields")
 - **Direction of syslog detections:** every IPS / malware detection now carries

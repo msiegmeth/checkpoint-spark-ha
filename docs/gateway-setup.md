@@ -113,6 +113,14 @@ a user and a password (≥ 12 characters).
 | Client authentication | the user/password from the integration options |
 | Server authentication | only for `https://` with a private CA: upload that CA certificate |
 
+*Test Connection* on the gateway requests `GET /status` on the server root;
+the integration answers it for the configured gateway (after the option is
+enabled and Home Assistant was restarted).
+
+Resulting sensors: CPU load, memory load, booted, connections, new
+connections/s, WAN download/upload (interface `ppp0`, else `WAN`), WAN latency,
+jitter and packet loss (SD-WAN probes of the ISP link).
+
 The gateway downloads its OpenTelemetry agent from Check Point, so it needs
 internet access. Only POSTs from the gateway's IP with the right credentials
 are accepted; payloads are size-limited and only the newest value per series is

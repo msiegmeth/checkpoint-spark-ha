@@ -47,9 +47,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     # Skipped without HTTP/frontend (e.g. in tests).
     if getattr(hass, "http", None) is None:
         return True
-    from .telemetry_view import TelemetryView  # noqa: PLC0415
+    from .telemetry_view import TelemetryStatusView, TelemetryView  # noqa: PLC0415
 
     hass.http.register_view(TelemetryView())
+    hass.http.register_view(TelemetryStatusView())  # for the gateway's "Test Connection"
     if "frontend" not in hass.config.components:
         return True
     from homeassistant.components.frontend import add_extra_js_url  # noqa: PLC0415

@@ -240,6 +240,14 @@ class TelemetryStore:
         self.last_received = now
         return stored
 
+    def values(self, name: str) -> list[tuple[dict[str, str], float]]:
+        """All (labels, value) of one metric with a real (non-NaN) value."""
+        out = []
+        for item in self.series.values():
+            if item["labels"].get("__name__") == name and item["value"] == item["value"]:  # NaN check
+                out.append((item["labels"], item["value"]))
+        return out
+
     def metric_names(self) -> dict[str, int]:
         """Metric name -> number of series."""
         out: dict[str, int] = {}
