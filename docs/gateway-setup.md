@@ -113,11 +113,10 @@ a user and a password (≥ 12 characters).
 | Client authentication | the user/password from the integration options |
 | Server authentication | only for `https://` with a private CA: upload that CA certificate |
 
-*Test Connection* on the gateway requests `GET /status` on the server root.
-The integration answers it with 200 for the configured gateway, but the
-gateway may still report *failed* (it apparently expects a real Prometheus
-server). This is cosmetic: check the sensor *Telemetry series* – if its value
-and `requests` grow, the export works.
+*Test Connection* on the gateway requests `GET /status` on the server root and
+expects a Prometheus status page; the integration answers it (only for the
+configured gateway), so the test reports *successful*. Reception itself is
+visible in the sensor *Telemetry series* (value and `requests` grow).
 
 Resulting sensors: CPU load, memory load, booted, connections, new
 connections/s, WAN download/upload (interface `ppp0`, else `WAN`), WAN latency,
