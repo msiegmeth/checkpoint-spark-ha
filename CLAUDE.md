@@ -15,21 +15,16 @@ Liste; Fehllogin 400 oder 401.
 HACS-kompatibel: `custom_components/checkpoint_spark/` im Root, `docs/`,
 `examples/`, `.github/workflows/` (hassfest + HACS-Validierung, Release bei Tag).
 
-## Entwicklungsablauf (diese Installation)
-- Repo: `/homeassistant/dev/checkpoint-spark-ha` (Gitea `gitadmin/checkpoint-spark-ha`,
-  privat) → Push-Mirror → GitHub `msiegmeth/checkpoint-spark-ha` (öffentlich, HACS-Quelle).
-  Auf GitHub nie direkt ändern.
-- Installiert über **HACS** (Custom Repository `msiegmeth/checkpoint-spark-ha`).
-  Unveröffentlichte Stände testen: HACS-Ordner `/homeassistant/custom_components/checkpoint_spark`
-  sichern/entfernen und kurzzeitig durch einen **relativen** Symlink
-  `../dev/checkpoint-spark-ha/custom_components/checkpoint_spark` ersetzen (Core-Container
-  mountet als `/config`); nach dem Release wieder per HACS installieren. Pfad ist im
-  HA-Config-Repo gitignored.
-- Python-Änderung → HA-Neustart (ankündigen). Report-Struktur über Diagnostics
-  (`/api/diagnostics/config_entry/<id>`) ansehen.
+## Entwicklungsablauf
+- Test einer Entwicklungsversion: `custom_components/checkpoint_spark` dieses Repos in eine
+  HA-Testinstanz verlinken (relativer Symlink, falls HA in einem anderen Container läuft),
+  HA neu starten. Report-Struktur über Diagnostics ansehen.
+- Tests: `pip install -r requirements_test.txt && pytest` (laufen auch in GitHub Actions).
 - Release: `manifest.json`-Version + **lesbarer** CHANGELOG-Abschnitt (Neu/Geändert/Behoben/
-  Hinweise zum Update, für Nutzer geschrieben – User-Vorgabe), Tag `vX.Y.Z`, push → GitHub-Action
-  nimmt den Abschnitt als Release-Text (= Anzeige in HACS) → HACS bietet Update an.
+  Hinweise zum Update, für Nutzer geschrieben), Tag `vX.Y.Z`, push → GitHub-Action nimmt den
+  Abschnitt als Release-Text (= Anzeige in HACS). Erst taggen, wenn die Tests grün sind.
+- Versionierung: SemVer – PATCH = Fehlerbehebung, MINOR = neue Funktion, 1.0 = stabile Optionen/Entitäten.
+- Installationsspezifische Hinweise (Pfade, Remotes, Zugang) stehen in `CLAUDE.local.md` (nicht im Repo).
 
 ## Regeln
 - Am Gateway NUR `login`, `logout`, `generate-report` und Clish `show …`. Nie Config ändern.
