@@ -624,7 +624,12 @@ def _tm_boot(st):
     up = next((v for _, v in st.values("system_uptime")), None)
     if up is None or st.last_received is None:
         return None, {}
-    return (st.last_received - timedelta(seconds=up)).replace(second=0, microsecond=0), {}
+    boot = (st.last_received - timedelta(seconds=up)).replace(second=0, microsecond=0)
+    # keep the previous value unless it really changed (reboot) – avoids ±1 min flapping
+    prev = getattr(st, "boot_cache", None)
+    if prev is None or abs((boot - prev).total_seconds()) > 180:
+        st.boot_cache = prev = boot
+    return prev, {}
 
 
 @dataclass(frozen=True, kw_only=True)

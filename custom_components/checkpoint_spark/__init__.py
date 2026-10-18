@@ -60,7 +60,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     frontend = Path(__file__).parent / "frontend"
     card = frontend / "checkpoint-spark-card.js"
     # whole folder: card + brand icon module (loaded by the card on demand)
-    await hass.http.async_register_static_paths([StaticPathConfig(f"/{DOMAIN}", str(frontend), True)])
+    # no long-term caching: browsers revalidate, so a new card version shows up without hard reload
+    await hass.http.async_register_static_paths([StaticPathConfig(f"/{DOMAIN}", str(frontend), False)])
     # version + file time: browsers reload the card whenever the file changes (also between releases)
     mtime = int((await hass.async_add_executor_job(card.stat)).st_mtime)
     add_extra_js_url(hass, f"{CARD_URL}?v={integration.version}-{mtime}")

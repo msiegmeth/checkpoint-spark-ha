@@ -124,4 +124,13 @@ class TelemetryStatusView(HomeAssistantView):
             getattr(e.runtime_data, "telemetry", None) is not None and remote in e.runtime_data.telemetry_allowed
             for e in hass.config_entries.async_loaded_entries(DOMAIN)
         )
-        return web.Response(status=200, text="OK") if ok else web.Response(status=404)
+        if not ok:
+            return web.Response(status=404)
+        # look like a Prometheus server's status page – the gateway's check seems to expect one
+        return web.Response(
+            status=200,
+            content_type="text/html",
+            text="<!doctype html><html><head><title>Prometheus Time Series Collection and Processing Server"
+            "</title></head><body>Prometheus remote write receiver (Home Assistant checkpoint_spark) – ready"
+            "</body></html>",
+        )

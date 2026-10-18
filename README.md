@@ -130,6 +130,18 @@ contains (e.g. the hourly report has no IPS or high-risk figures).
 | Hardware problem (binary, problem, diagnostic) | – | `problems` |
 | Next contract expiry (timestamp) | – | `contracts` (SKU, expiry, expired), `expired_contracts` |
 
+**Gateway load** (from the optional OpenTelemetry receiver, see
+[gateway setup](docs/gateway-setup.md#6-opentelemetry--skyline-for-health-metrics-optional-preview)):
+
+| Entity | Unit |
+|---|---|
+| CPU load / memory load | % |
+| Booted (timestamp, diagnostic) | – |
+| Connections / new connections | count / 1/s |
+| WAN download / upload | Mbit/s (attribute `interfaces` with all interfaces) |
+| WAN latency / jitter / packet loss | ms / ms / % (SD-WAN probes, attribute `per_isp`) |
+| Telemetry series (diagnostic) | received series, requests, rejected, metric names |
+
 The device shows the firmware version and MAC address from the report.
 
 ## Threat events

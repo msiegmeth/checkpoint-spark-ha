@@ -4,7 +4,7 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.6.0] - 2026-10-18
 
 ### New
 - **Dashboard card included – an interactive event viewer.** After installing
@@ -38,14 +38,18 @@ All notable changes are documented here. Format based on
   them with charts. The gateway's *Test Connection* button (GET /status) is
   answered for the configured gateway. Raw metrics: sensor *Telemetry series*,
   action `checkpoint_spark.telemetry_metrics`.
-- Documentation: which syslog settings to use on the gateway
-  (system + security logs, UDP, optional "show obfuscated fields")
 - **Direction of syslog detections:** every IPS / malware detection now carries
   `direction` – `inbound` (external → internal), `internal` (internal → internal)
   or `outbound` (internal → external). Shown in the card, part of the event data,
   and counted per direction (`ips_by_direction` on *Detections (30 days)*,
   `last_hour_*` / `last_24h_*` on *IPS events (last hour)*). Internal and
   outbound attacks deserve a closer look.
+
+### Changed
+- *Booted* no longer flaps by a minute between polls; the card's files are no
+  longer cached long-term by browsers (new versions show up after a normal reload)
+- Documentation: which syslog settings to use on the gateway
+  (system + security logs, UDP, optional "show obfuscated fields")
 
 ## [0.5.2] - 2026-10-18
 
