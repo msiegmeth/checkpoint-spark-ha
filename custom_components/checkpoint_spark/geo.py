@@ -11,6 +11,7 @@ from array import array
 from bisect import bisect_right
 from datetime import timedelta
 import gzip
+import io
 import ipaddress
 import logging
 import os
@@ -77,7 +78,7 @@ class GeoIP:
         self.hass.async_create_background_task(self.async_setup(), "checkpoint_spark geoip")
 
     async def async_setup(self) -> None:
-        """Load the cached file, refresh it when it is old or missing."""
+        """Load the cached file; download when it is missing, unreadable or older than a month."""
         exists = await self.hass.async_add_executor_job(os.path.exists, self.path)
         if exists:
             await self.hass.async_add_executor_job(self._load)
@@ -85,7 +86,7 @@ class GeoIP:
             time.time() - (await self.hass.async_add_executor_job(os.path.getmtime, self.path))
             if exists else None
         )
-        if age is None or age > MAX_AGE.total_seconds():
+        if age is None or age > MAX_AGE.total_seconds() or not self.ready:
             await self._async_download()
 
     async def _async_download(self) -> None:
@@ -95,12 +96,22 @@ class GeoIP:
         for month in months:
             url = URL.format(month=month)
             try:
-                async with session.get(url, timeout=120) as resp:
+                async with session.get(url, timeout=300) as resp:
                     if resp.status != 200:
                         continue
-                    data = await resp.content.read(MAX_DOWNLOAD + 1)
-                if len(data) > MAX_DOWNLOAD or data[:2] != b"\x1f\x8b":
+                    # read the whole body (content.read(n) only returns what is buffered), bounded
+                    chunks, size = [], 0
+                    async for chunk in resp.content.iter_chunked(65536):
+                        size += len(chunk)
+                        if size > MAX_DOWNLOAD:
+                            break
+                        chunks.append(chunk)
+                data = b"".join(chunks)
+                if size > MAX_DOWNLOAD or data[:2] != b"\x1f\x8b":
                     _LOGGER.warning("GeoIP download from %s rejected (size/format)", url)
+                    continue
+                if not await self.hass.async_add_executor_job(self._valid, data):
+                    _LOGGER.warning("GeoIP download from %s incomplete – not used", url)
                     continue
                 await self.hass.async_add_executor_job(self._store, data)
                 await self.hass.async_add_executor_job(self._load)
@@ -109,6 +120,18 @@ class GeoIP:
             except Exception as err:  # noqa: BLE001 – network problems must not break the integration
                 _LOGGER.debug("GeoIP download %s failed: %s", url, err)
         _LOGGER.warning("GeoIP database could not be downloaded; the threat map shows no countries")
+
+    @staticmethod
+    def _valid(data: bytes) -> bool:
+        """Complete gzip with plausible content (catches truncated downloads)."""
+        lines = 0
+        try:
+            with gzip.GzipFile(fileobj=io.BytesIO(data)) as f:  # streamed – no full copy in memory
+                for _ in f:
+                    lines += 1
+        except (OSError, EOFError):
+            return False
+        return lines > 100_000
 
     def _store(self, data: bytes) -> None:
         tmp = self.path + ".tmp"

@@ -4,6 +4,13 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.1] - 2026-10-18
+
+### Fixed
+- The country database download could be cut off, leaving the threat map
+  without countries for a month. It is now read completely, checked before it
+  is used, and an unreadable file triggers a new download.
+
 ## [0.8.0] - 2026-10-18
 
 ### New
