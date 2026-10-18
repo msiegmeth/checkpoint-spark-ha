@@ -6,9 +6,13 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.loader import async_get_integration
 
 import logging
+from pathlib import Path
 
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.const import CONF_HOST
 
 from .const import (
@@ -33,8 +37,23 @@ PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
+CARD_URL = f"/{DOMAIN}/checkpoint-spark-card.js"
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_setup_services(hass)
+    # Dashboard card shipped with the integration (no separate resource needed)
+    integration = await async_get_integration(hass, DOMAIN)
+    await hass.http.async_register_static_paths(
+        [
+            StaticPathConfig(
+                CARD_URL,
+                str(Path(__file__).parent / "frontend" / "checkpoint-spark-card.js"),
+                True,
+            )
+        ]
+    )
+    add_extra_js_url(hass, f"{CARD_URL}?v={integration.version}")
     return True
 
 

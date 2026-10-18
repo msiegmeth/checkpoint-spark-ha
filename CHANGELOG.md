@@ -4,6 +4,15 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### New
+- **Dashboard card included.** After installing the integration, add the card
+  *Check Point Quantum Spark* from the card picker – no extra resources or other
+  custom cards needed. Choose the gateway, done. Shows status (internet,
+  infection, blades, hardware), key figures with detail dialogs, and tabs for
+  threats, hosts, apps & sites, real-time detections and system values.
+
 ## [0.5.2] - 2026-10-18
 
 ### Changed
