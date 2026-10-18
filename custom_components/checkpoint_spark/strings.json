@@ -45,19 +45,26 @@
           "redact_diagnostics": "Redact network data in diagnostics",
           "syslog_enabled": "Receive syslog (preview)",
           "syslog_port": "Syslog UDP port",
-          "syslog_ignore_sources": "Ignore sources (syslog)"
+          "syslog_ignore_sources": "Ignore sources (syslog)",
+          "syslog_senders": "Additional senders (syslog relay)",
+          "syslog_forward": "Forward syslog to",
+          "syslog_retention_days": "Keep detections"
         },
         "description": "Each report type is fetched at its own interval. Generating reports costs CPU on the gateway – keep long periods (weekly, monthly) at hours.",
         "data_description": {
           "monitored_blades": "The 'Blade failure' sensor turns on when one of these blades is not enabled.",
           "redact_diagnostics": "Replaces IP and MAC addresses and removes gateway name and host, so diagnostics can be shared in a public issue.",
           "syslog_enabled": "Listens for the gateway's log messages (only from its IP) and keeps the last 200 in memory – for analysing the log format. Configure the gateway to send syslog to this Home Assistant host.",
-          "syslog_ignore_sources": "Comma-separated IPs whose IPS/malware detections do not raise events, e.g. your own vulnerability scanner."
+          "syslog_ignore_sources": "Comma-separated IPs whose IPS/malware detections do not raise events, e.g. your own vulnerability scanner.",
+          "syslog_senders": "Comma-separated IPs/host names of log servers that forward the gateway's syslog (e.g. Synology Log Center, rsyslog). Leave empty if the gateway sends directly.",
+          "syslog_forward": "Optional host:port (UDP) that receives every accepted message unchanged, e.g. an archive on your NAS.",
+          "syslog_retention_days": "How long IPS and malware detections are kept (survive restarts). Raw messages are never stored."
         }
       }
     },
     "error": {
-      "no_report_type": "Select at least one report type"
+      "no_report_type": "Select at least one report type",
+      "invalid_forward": "Use host:port, e.g. 192.168.1.2:514"
     }
   },
   "selector": {
@@ -312,6 +319,9 @@
       },
       "detected_threats": {
         "name": "Detected threats (24 h)"
+      },
+      "detections_30d": {
+        "name": "Detections (30 days)"
       }
     },
     "binary_sensor": {
@@ -383,6 +393,24 @@
         "product": {
           "name": "Product",
           "description": "Only messages of this product (ProductName), e.g. Anti-Virus, IPS, Firewall"
+        }
+      }
+    },
+    "detections": {
+      "name": "Detections",
+      "description": "Returns stored IPS and malware detections (newest first).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Only needed with several gateways."
+        },
+        "days": {
+          "name": "Days",
+          "description": "Period (1–365)"
+        },
+        "kind": {
+          "name": "Kind",
+          "description": "ips_attack or malware_detected"
         }
       }
     }

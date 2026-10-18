@@ -29,7 +29,11 @@ from .const import (
     CONF_MONITORED_BLADES,
     CONF_REDACT_DIAGNOSTICS,
     CONF_SYSLOG_ENABLED,
+    CONF_SYSLOG_FORWARD,
     CONF_SYSLOG_IGNORE,
+    CONF_SYSLOG_RETENTION,
+    CONF_SYSLOG_SENDERS,
+    DEFAULT_SYSLOG_RETENTION,
     CONF_SYSLOG_PORT,
     DEFAULT_SYSLOG_PORT,
     CONF_REPORT_TYPES,
@@ -44,6 +48,7 @@ from .const import (
 )
 from .coordinator import SparkConfigEntry, report_interval
 from .report import blades_of
+from .syslog import parse_target
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -169,11 +174,18 @@ class SparkOptionsFlow(OptionsFlowWithReload):
             if not user_input.get(CONF_REPORT_TYPES):
                 errors[CONF_REPORT_TYPES] = "no_report_type"
             else:
+                if CONF_SYSLOG_FORWARD in user_input:
+                    user_input[CONF_SYSLOG_FORWARD] = user_input[CONF_SYSLOG_FORWARD].strip()
+                    if user_input[CONF_SYSLOG_FORWARD] and parse_target(user_input[CONF_SYSLOG_FORWARD]) is None:
+                        errors[CONF_SYSLOG_FORWARD] = "invalid_forward"
+                if CONF_SYSLOG_RETENTION in user_input:
+                    user_input[CONF_SYSLOG_RETENTION] = int(user_input[CONF_SYSLOG_RETENTION])
                 for rt in REPORT_TYPES:
                     key = f"{CONF_SCAN_INTERVAL_MIN}_{rt}"
                     if key in user_input:
                         user_input[key] = int(user_input[key])
-                return self.async_create_entry(data=user_input)
+                if not errors:
+                    return self.async_create_entry(data=user_input)
 
         options = dict(self.config_entry.options)
         fields: dict[Any, Any] = {
@@ -235,8 +247,24 @@ class SparkOptionsFlow(OptionsFlowWithReload):
             vol.Optional(CONF_SYSLOG_PORT, default=options.get(CONF_SYSLOG_PORT, DEFAULT_SYSLOG_PORT))
         ] = vol.All(vol.Coerce(int), vol.Range(min=1024, max=65535))
         fields[
+            vol.Optional(CONF_SYSLOG_SENDERS, default=options.get(CONF_SYSLOG_SENDERS, ""))
+        ] = str
+        fields[
+            vol.Optional(CONF_SYSLOG_FORWARD, default=options.get(CONF_SYSLOG_FORWARD, ""))
+        ] = str
+        fields[
             vol.Optional(CONF_SYSLOG_IGNORE, default=options.get(CONF_SYSLOG_IGNORE, ""))
         ] = str
+        fields[
+            vol.Optional(
+                CONF_SYSLOG_RETENTION,
+                default=options.get(CONF_SYSLOG_RETENTION, DEFAULT_SYSLOG_RETENTION),
+            )
+        ] = selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=1, max=365, step=1, mode=selector.NumberSelectorMode.BOX, unit_of_measurement="d"
+            )
+        )
         return self.async_show_form(
             step_id="init", data_schema=vol.Schema(fields), errors=errors
         )

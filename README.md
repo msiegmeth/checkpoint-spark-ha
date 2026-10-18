@@ -163,9 +163,20 @@ actions:
 ## Syslog (real-time security logs)
 
 Option *Receive syslog* starts a UDP listener (default port **5140**; UniFi
-Network already uses 5514). On the gateway, add a syslog server pointing to the
-Home Assistant host and port and enable sending security logs. Only datagrams
-from the gateway's IP are accepted; messages are kept in memory only.
+Network already uses 5514). Two ways to feed it:
+
+1. **Directly** – on the gateway, add a syslog server pointing to the Home
+   Assistant host and port and enable sending security logs.
+2. **Via a log server** – the gateway sends to e.g. Synology Log Center,
+   rsyslog or syslog-ng, which forwards to Home Assistant. Add that server's
+   IP under *Additional senders*.
+
+Only datagrams from the gateway and the additional senders are accepted.
+With *Forward syslog to* (`host:port`) every accepted message is passed on
+unchanged – useful for a full archive on a NAS when the gateway supports only
+one syslog server. IPS and malware **detections are stored** (default 90 days,
+max 2000) and survive restarts; raw messages are kept in memory only.
+See [SECURITY.md](SECURITY.md) for the hardening.
 
 | Entity | Content |
 |---|---|
@@ -173,7 +184,8 @@ from the gateway's IP are accepted; messages are kept in memory only.
 | Firewall drops (last hour) | count; `last_24h`, `top_sources`, `top_services` |
 | Scanned hosts (24 h) | from the anti-malware status; `hour`, `week` |
 | Detected threats (24 h) | unique detections; `hour`, `week`, `recent_malware` |
-| Syslog messages | counter since start; `products`, `dropped` |
+| Detections (30 days) | stored IPS + malware detections; `last_24h`, `last_7d`, `daily`, `history` (last 100) |
+| Syslog messages | counter since start; `products`, `dropped`, `rate_limited`, `forwarded`, `allowed_senders` |
 
 IPS attacks (`kind: ips_attack`) and malware detections (`kind: malware_detected`)
 fire `checkpoint_spark_threat` with `source: syslog` – at most once per hour for
@@ -186,6 +198,7 @@ the same attack and source. Sources listed in *Ignore sources* never fire events
 | `checkpoint_spark.refresh` | – | fetches all selected reports now |
 | `checkpoint_spark.get_report` | `report_type` | `{report_type, fetched, report}` (decoded report) |
 | `checkpoint_spark.show_command` | `command` (must start with `show`) | `{command, output}` |
+| `checkpoint_spark.detections` | `days` (1–365), `kind` | `{count, detections}` (stored, newest first) |
 | `checkpoint_spark.syslog_messages` | `limit` (1–200, default 50) | `{received, dropped, messages}` (newest first) |
 
 All actions accept an optional `config_entry_id` when several gateways are configured.

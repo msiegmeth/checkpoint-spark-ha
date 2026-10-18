@@ -15,6 +15,7 @@ from homeassistant.core import (
 )
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.util import dt as dt_util
 
 from .api import SparkError
 from .const import DOMAIN, REPORT_TYPES
@@ -99,6 +100,24 @@ def async_setup_services(hass: HomeAssistant) -> None:
             "messages": list(reversed(source))[:limit],
         }
 
+    async def detections(call: ServiceCall) -> ServiceResponse:
+        coordinator = _coordinator(hass, call)
+        rx = coordinator.syslog
+        if rx is None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="syslog_disabled"
+            )
+        items = rx.analyzer.history_since(dt_util.utcnow(), call.data["days"], call.data.get("kind"))
+        return {"count": len(items), "detections": list(reversed(items))}
+
+    hass.services.async_register(
+        DOMAIN,
+        "detections",
+        detections,
+        schema=vol.Schema({**_ENTRY, vol.Optional("days", default=7): vol.All(int, vol.Range(1, 365)),
+                           vol.Optional("kind"): vol.In(["ips_attack", "malware_detected"])}),
+        supports_response=SupportsResponse.ONLY,
+    )
     hass.services.async_register(DOMAIN, "refresh", refresh, schema=vol.Schema(_ENTRY))
     hass.services.async_register(
         DOMAIN,

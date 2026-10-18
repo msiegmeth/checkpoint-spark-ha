@@ -17,9 +17,14 @@ from typing import Any
 WINDOW = timedelta(hours=24)
 RECENT = 20
 EVENT_DEDUP = timedelta(hours=1)
+MAX_EVENTS_PER_HOUR = 30      # global cap so a flood cannot spam notifications
+MAX_HISTORY = 2000            # persisted detections
+MAX_WINDOW_IPS = 20_000       # rolling 24 h buffers are bounded as well
+MAX_WINDOW_DROPS = 200_000
 
 _MALWARE_PRODUCTS = ("anti virus", "anti-virus", "anti bot", "anti-bot", "threat emulation", "threat extraction")
 _MALWARE_NAME_KEYS = ("malware_name", "malware_family", "protection_name", "virus_name", "Name", "attack")
+_HISTORY_KEYS = {"time", "kind", "name", "attack", "severity", "action", "src", "dst", "cve", "resource", "product"}
 _SEVERITY = {"0": "info", "1": "low", "2": "medium", "3": "high", "4": "critical"}
 
 
@@ -38,15 +43,21 @@ def _clean(value: Any) -> str | None:
 class LogAnalyzer:
     """Keeps rolling 24 h counters and recent detections; returns events for new threats."""
 
-    def __init__(self, ignore_sources: set[str] | None = None) -> None:
+    def __init__(self, ignore_sources: set[str] | None = None, retention_days: int = 90) -> None:
         self.ignore_sources = set(ignore_sources or ())
-        self.ips: deque[dict[str, Any]] = deque()
-        self.drops: deque[tuple[datetime, str | None, str | None]] = deque()
+        self.retention = timedelta(days=max(1, retention_days))
+        self.ips: deque[dict[str, Any]] = deque(maxlen=MAX_WINDOW_IPS)
+        self.drops: deque[tuple[datetime, str | None, str | None]] = deque(maxlen=MAX_WINDOW_DROPS)
         self.recent_ips: deque[dict[str, Any]] = deque(maxlen=RECENT)
         self.recent_malware: deque[dict[str, Any]] = deque(maxlen=RECENT)
+        # persisted detections (IPS + malware), newest last
+        self.history: deque[dict[str, Any]] = deque(maxlen=MAX_HISTORY)
         self.anti_malware: dict[str, int] = {}
         self.ignored = 0
+        self.events_suppressed = 0
+        self.dirty = False
         self._last_event: dict[tuple[str, str, str], datetime] = {}
+        self._event_times: deque[datetime] = deque(maxlen=MAX_EVENTS_PER_HOUR)
 
     # ------------------------------------------------------------- input --
     def add(self, msg: dict[str, Any], now: datetime) -> list[dict[str, Any]]:
@@ -106,16 +117,26 @@ class LogAnalyzer:
             self.ignored += 1
             return []
         recent.append(item)
+        self.history.append(item | {"kind": kind})
+        self.dirty = True
         if window is not None:
             window.append(item | {"_t": now})
         key = (kind, name or "", src or "")
         last = self._last_event.get(key)
         if last and now - last < EVENT_DEDUP:
             return []
+        if len(self._event_times) == MAX_EVENTS_PER_HOUR and now - self._event_times[0] < timedelta(hours=1):
+            self.events_suppressed += 1
+            return []
         self._last_event[key] = now
+        self._event_times.append(now)
         return [{"kind": kind, "source": "syslog", "value": 1, **item}]
 
     def _prune(self, now: datetime) -> None:
+        old = now - self.retention
+        while self.history and self.history[0]["time"] < old.isoformat():
+            self.history.popleft()
+            self.dirty = True
         cutoff = now - WINDOW
         while self.ips and self.ips[0]["_t"] < cutoff:
             self.ips.popleft()
@@ -124,6 +145,40 @@ class LogAnalyzer:
         stale = now - EVENT_DEDUP
         if len(self._last_event) > 1000:
             self._last_event = {k: t for k, t in self._last_event.items() if t >= stale}
+
+    # ------------------------------------------------------- persistence --
+    def dump(self) -> dict[str, Any]:
+        return {"history": list(self.history)}
+
+    def load(self, data: dict[str, Any], now: datetime) -> None:
+        """Restore persisted detections (validated, bounded)."""
+        for item in (data or {}).get("history", [])[-MAX_HISTORY:]:
+            if not isinstance(item, dict) or not isinstance(item.get("time"), str):
+                continue
+            clean = {
+                k: (v[:500] if isinstance(v, str) else v)
+                for k, v in item.items()
+                if k in _HISTORY_KEYS and isinstance(v, (str, int, float))
+            }
+            self.history.append(clean)
+            (self.recent_malware if clean.get("kind") == "malware_detected" else self.recent_ips).append(
+                {k: v for k, v in clean.items() if k != "kind"}
+            )
+        self._prune(now)
+        self.dirty = False
+
+    def history_since(self, now: datetime, days: int, kind: str | None = None) -> list[dict[str, Any]]:
+        cutoff = (now - timedelta(days=days)).isoformat()
+        return [i for i in self.history if i["time"] >= cutoff and (kind is None or i.get("kind") == kind)]
+
+    def daily_counts(self, now: datetime, days: int = 30) -> dict[str, dict[str, int]]:
+        """{'2026-10-18': {'ips_attack': 3, 'malware_detected': 1}, …} for the last days."""
+        out: dict[str, dict[str, int]] = {}
+        for item in self.history_since(now, days):
+            day = item["time"][:10]
+            out.setdefault(day, {}).setdefault(item.get("kind", "?"), 0)
+            out[day][item.get("kind", "?")] += 1
+        return out
 
     # ------------------------------------------------------------ output --
     def ips_count(self, now: datetime, hours: int = 1) -> int:

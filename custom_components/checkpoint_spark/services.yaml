@@ -43,3 +43,19 @@ syslog_messages:
       example: Anti-Virus
       selector:
         text:
+detections:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: checkpoint_spark
+    days:
+      default: 7
+      selector:
+        number:
+          min: 1
+          max: 365
+    kind:
+      selector:
+        select:
+          options: [ips_attack, malware_detected]

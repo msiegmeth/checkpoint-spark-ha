@@ -56,3 +56,34 @@ def test_firewall_drops_window() -> None:
 def test_truncated_value() -> None:
     msg = parse_message('<14>Oct 18 03:08:08 GW Action="accept" ProductName="Application Control(+)URL Filte')
     assert msg["fields"]["ProductName"] == "Application Control(+)URL Filte"
+
+
+def test_event_cap_per_hour() -> None:
+    a = LogAnalyzer()
+    events = 0
+    for i in range(100):
+        line = IPS.replace('src="192.0.2.2"', f'src="198.51.100.{i}"')
+        events += len(a.add(parse_message(line), NOW + timedelta(seconds=i)))
+    assert events == 30 and a.events_suppressed == 70
+    assert len(a.history) == 100  # all detections are still recorded
+
+
+def test_persistence_roundtrip_and_validation() -> None:
+    a = LogAnalyzer(retention_days=90)
+    a.add(parse_message(IPS), NOW)
+    dump = a.dump()
+    dump["history"].append({"time": NOW.isoformat(), "kind": "ips_attack", "evil": {"x": 1}, "name": "y" * 2000})
+    dump["history"].append("not a dict")
+    b = LogAnalyzer(retention_days=90)
+    b.load(dump, NOW)
+    assert len(b.history) == 2
+    assert "evil" not in b.history[1] and len(b.history[1]["name"]) == 500
+    assert b.history_since(NOW, 7, "ips_attack")
+    assert b.daily_counts(NOW)[NOW.date().isoformat()]["ips_attack"] == 2
+
+
+def test_retention() -> None:
+    a = LogAnalyzer(retention_days=7)
+    a.add(parse_message(IPS), NOW - timedelta(days=10))
+    a.add(parse_message(DROP), NOW)  # any message prunes
+    assert not a.history

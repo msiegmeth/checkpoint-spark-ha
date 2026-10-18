@@ -4,6 +4,24 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-10-18
+
+### New
+- **Syslog via a log server.** Besides receiving directly from the gateway,
+  the integration now accepts syslog forwarded by a log server
+  (Synology Log Center, rsyslog, syslog-ng, …) – add it under
+  *Additional senders*.
+- **Forward syslog** to another server (option *Forward syslog to*,
+  `host:port`), e.g. to keep a full archive on your NAS while Home Assistant
+  evaluates the messages in real time.
+- **Detections are stored** (IPS and malware, default 90 days, max 2000) and
+  survive restarts. New sensor *Detections (30 days)* with daily counts and
+  the last 100 detections; action `checkpoint_spark.detections` returns the
+  stored history.
+- **Hardening:** rate limit, size limits, bounded buffers, control characters
+  stripped, at most 30 events per hour, loop protection for forwarding.
+  See [SECURITY.md](SECURITY.md).
+
 ## [0.4.0] - 2026-10-18
 
 ### New

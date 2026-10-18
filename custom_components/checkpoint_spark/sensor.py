@@ -483,6 +483,11 @@ class SparkSyslogSensor(SparkEntity, SensorEntity):
         return {
             "port": rx.port,
             "dropped": rx.dropped,
+            "rate_limited": rx.rate_limited,
+            "forwarded": rx.forwarded,
+            "forward_to": f"{rx.forward_addr[0]}:{rx.forward_addr[1]}" if rx.forward_addr else None,
+            "allowed_senders": rx.allowed,
+            "events_suppressed": rx.analyzer.events_suppressed,
             "products": dict(rx.product_counts),
             "last_received": rx.last_received.isoformat() if rx.last_received else None,
         }
@@ -492,7 +497,7 @@ class SparkLogSensor(SparkEntity, SensorEntity):
     """Value derived from the syslog stream (rolling windows)."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _unrecorded_attributes = frozenset({"recent", "top_sources", "top_services"})
+    _unrecorded_attributes = frozenset({"recent", "recent_malware", "top_sources", "top_services", "history", "daily"})
 
     def __init__(self, coordinator: SparkCoordinator, key: str, icon: str) -> None:
         super().__init__(coordinator, key)
@@ -528,6 +533,8 @@ class SparkLogSensor(SparkEntity, SensorEntity):
                 return self._a.anti_malware.get("scan_hosts_day")
             case "detected_threats":
                 return self._a.anti_malware.get("unique_detected_day")
+            case "detections_30d":
+                return len(self._a.history_since(now, 30))
         return None
 
     @property
@@ -546,6 +553,11 @@ class SparkLogSensor(SparkEntity, SensorEntity):
             case "detected_threats":
                 return {"hour": am.get("unique_detected_hour"), "week": am.get("unique_detected_week"),
                         "recent_malware": list(reversed(self._a.recent_malware))}
+            case "detections_30d":
+                return {"last_24h": len(self._a.history_since(now, 1)), "last_7d": len(self._a.history_since(now, 7)),
+                        "daily": self._a.daily_counts(now, 30),
+                        # newest first, bounded so the state stays small for the frontend
+                        "history": list(reversed(self._a.history_since(now, 30)))[:100]}
         return {}
 
 
@@ -577,5 +589,6 @@ async def async_setup_entry(
             SparkLogSensor(coordinator, "firewall_drops_1h", "mdi:wall-fire"),
             SparkLogSensor(coordinator, "scanned_hosts", "mdi:radar"),
             SparkLogSensor(coordinator, "detected_threats", "mdi:biohazard"),
+            SparkLogSensor(coordinator, "detections_30d", "mdi:shield-search"),
         ]
     async_add_entities(entities)

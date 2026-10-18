@@ -45,19 +45,26 @@
           "redact_diagnostics": "Netzwerkdaten in Diagnosen schwärzen",
           "syslog_enabled": "Syslog empfangen (Vorschau)",
           "syslog_port": "Syslog-UDP-Port",
-          "syslog_ignore_sources": "Quellen ignorieren (Syslog)"
+          "syslog_ignore_sources": "Quellen ignorieren (Syslog)",
+          "syslog_senders": "Zusätzliche Absender (Syslog-Relay)",
+          "syslog_forward": "Syslog weiterleiten an",
+          "syslog_retention_days": "Treffer aufbewahren"
         },
         "description": "Jeder Report-Typ wird in seinem eigenen Intervall abgerufen. Reports kosten Rechenzeit am Gateway – lange Zeiträume (Woche, Monat) besser im Stundenbereich.",
         "data_description": {
           "monitored_blades": "Der Sensor „Blade ausgefallen“ geht an, wenn eines dieser Blades nicht aktiv ist.",
           "redact_diagnostics": "Ersetzt IP- und MAC-Adressen und entfernt Gateway-Name und Host – dann lassen sich Diagnosen gefahrlos in einem öffentlichen Issue teilen.",
           "syslog_enabled": "Empfängt die Log-Meldungen des Gateways (nur von dessen IP) und hält die letzten 200 im Speicher – zur Analyse des Log-Formats. Am Gateway den Log-Server auf diesen Home-Assistant-Host stellen.",
-          "syslog_ignore_sources": "Kommagetrennte IPs, deren IPS-/Malware-Treffer keine Events auslösen – z. B. der eigene Schwachstellen-Scanner."
+          "syslog_ignore_sources": "Kommagetrennte IPs, deren IPS-/Malware-Treffer keine Events auslösen – z. B. der eigene Schwachstellen-Scanner.",
+          "syslog_senders": "Kommagetrennte IPs/Hostnamen von Log-Servern, die das Syslog des Gateways weiterleiten (z. B. Synology Protokoll-Center, rsyslog). Leer lassen, wenn das Gateway direkt sendet.",
+          "syslog_forward": "Optional Host:Port (UDP), der jede angenommene Meldung unverändert erhält – z. B. ein Archiv auf dem NAS.",
+          "syslog_retention_days": "Wie lange IPS- und Malware-Treffer gespeichert bleiben (überstehen Neustarts). Rohmeldungen werden nie gespeichert."
         }
       }
     },
     "error": {
-      "no_report_type": "Mindestens einen Report-Typ wählen"
+      "no_report_type": "Mindestens einen Report-Typ wählen",
+      "invalid_forward": "Format Host:Port, z. B. 192.168.1.2:514"
     }
   },
   "selector": {
@@ -312,6 +319,9 @@
       },
       "detected_threats": {
         "name": "Erkannte Bedrohungen (24 h)"
+      },
+      "detections_30d": {
+        "name": "Treffer (30 Tage)"
       }
     },
     "binary_sensor": {
@@ -383,6 +393,24 @@
         "product": {
           "name": "Produkt",
           "description": "Nur Meldungen dieses Produkts (ProductName), z. B. Anti-Virus, IPS, Firewall"
+        }
+      }
+    },
+    "detections": {
+      "name": "Treffer",
+      "description": "Gibt gespeicherte IPS- und Malware-Treffer zurück (neueste zuerst).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Gateway",
+          "description": "Nur bei mehreren Gateways nötig."
+        },
+        "days": {
+          "name": "Tage",
+          "description": "Zeitraum (1–365)"
+        },
+        "kind": {
+          "name": "Art",
+          "description": "ips_attack oder malware_detected"
         }
       }
     }
