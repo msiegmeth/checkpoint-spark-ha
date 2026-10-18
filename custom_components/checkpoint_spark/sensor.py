@@ -544,6 +544,8 @@ class SparkLogSensor(SparkEntity, SensorEntity):
         match self._attr_translation_key:
             case "ips_events_1h":
                 return {"last_24h": self._a.ips_count(now, 24), "ignored": self._a.ignored,
+                        **{f"last_hour_{d}": self._a.ips_count(now, 1, d) for d in ("inbound", "internal", "outbound")},
+                        **{f"last_24h_{d}": self._a.ips_count(now, 24, d) for d in ("inbound", "internal", "outbound")},
                         "recent": list(reversed(self._a.recent_ips))}
             case "firewall_drops_1h":
                 return {"last_24h": self._a.drop_count(now, 24),
@@ -555,6 +557,7 @@ class SparkLogSensor(SparkEntity, SensorEntity):
                         "recent_malware": list(reversed(self._a.recent_malware))}
             case "detections_30d":
                 return {"last_24h": len(self._a.history_since(now, 1)), "last_7d": len(self._a.history_since(now, 7)),
+                        "ips_by_direction": {f"{d}d": self._a.direction_counts(now, d) for d in (1, 7, 30)},
                         "daily": self._a.daily_counts(now, 30),
                         # newest first, bounded so the state stays small for the frontend
                         "history": list(reversed(self._a.history_since(now, 30)))[:100]}

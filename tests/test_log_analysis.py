@@ -87,3 +87,22 @@ def test_retention() -> None:
     a.add(parse_message(IPS), NOW - timedelta(days=10))
     a.add(parse_message(DROP), NOW)  # any message prunes
     assert not a.history
+
+
+def test_direction() -> None:
+    from custom_components.checkpoint_spark.log_analysis import direction
+
+    assert direction("1.1.1.1", "192.168.1.1") == "inbound"
+    assert direction("192.168.1.2", "192.168.1.1") == "internal"
+    assert direction("192.168.1.50", "8.8.8.8") == "outbound"
+    assert direction("100.64.1.2", "10.0.0.1") == "internal"  # CGNAT counts as internal
+    assert direction("not-an-ip", "192.168.1.1") is None
+
+
+def test_direction_counts() -> None:
+    a = LogAnalyzer()
+    a.add(parse_message(IPS.replace('src="192.0.2.2"', 'src="1.1.1.1"')), NOW)  # from the internet
+    a.add(parse_message(IPS.replace('src="192.0.2.2"', 'src="192.168.1.2"').replace('dst="192.0.2.1"', 'dst="192.168.1.1"')), NOW)
+    assert a.history[0]["direction"] == "inbound" and a.history[1]["direction"] == "internal"
+    assert a.direction_counts(NOW, 1) == {"inbound": 1, "internal": 1, "outbound": 0}
+    assert a.ips_count(NOW, 1, "internal") == 1

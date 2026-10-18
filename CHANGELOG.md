@@ -12,6 +12,12 @@ All notable changes are documented here. Format based on
   custom cards needed. Choose the gateway, done. Shows status (internet,
   infection, blades, hardware), key figures with detail dialogs, and tabs for
   threats, hosts, apps & sites, real-time detections and system values.
+- **Direction of syslog detections:** every IPS / malware detection now carries
+  `direction` – `inbound` (external → internal), `internal` (internal → internal)
+  or `outbound` (internal → external). Shown in the card, part of the event data,
+  and counted per direction (`ips_by_direction` on *Detections (30 days)*,
+  `last_hour_*` / `last_24h_*` on *IPS events (last hour)*). Internal and
+  outbound attacks deserve a closer look.
 
 ## [0.5.2] - 2026-10-18
 

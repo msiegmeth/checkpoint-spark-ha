@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections import Counter, deque
 from datetime import datetime, timedelta
+import ipaddress
 from typing import Any
 
 WINDOW = timedelta(hours=24)
@@ -24,7 +25,29 @@ MAX_WINDOW_DROPS = 200_000
 
 _MALWARE_PRODUCTS = ("anti virus", "anti-virus", "anti bot", "anti-bot", "threat emulation", "threat extraction")
 _MALWARE_NAME_KEYS = ("malware_name", "malware_family", "protection_name", "virus_name", "Name", "attack")
-_HISTORY_KEYS = {"time", "kind", "name", "attack", "severity", "action", "src", "dst", "cve", "resource", "product"}
+_HISTORY_KEYS = {"time", "kind", "name", "attack", "severity", "action", "src", "dst", "cve", "resource", "product", "direction"}
+DIRECTIONS = ("inbound", "internal", "outbound")
+
+
+def _is_internal(ip: str | None) -> bool | None:
+    """Private/LAN address (RFC 1918, link-local, loopback, CGNAT); None if not an IP."""
+    try:
+        addr = ipaddress.ip_address(str(ip).strip())
+    except ValueError:
+        return None
+    return addr.is_private or addr.is_loopback or addr.is_link_local or addr in ipaddress.ip_network("100.64.0.0/10")
+
+
+def direction(src: str | None, dst: str | None) -> str | None:
+    """inbound = from the internet, internal = LAN to LAN, outbound = LAN to the internet."""
+    s_int, d_int = _is_internal(src), _is_internal(dst)
+    if s_int is None:
+        return None
+    if not s_int:
+        return "inbound"
+    if d_int is False:
+        return "outbound"
+    return "internal"
 _SEVERITY = {"0": "info", "1": "low", "2": "medium", "3": "high", "4": "critical"}
 
 
@@ -111,6 +134,7 @@ class LogAnalyzer:
             "cve": _clean(fields.get("Reference")),
             "resource": (_clean(fields.get("resource")) or "")[:200] or None,
             "product": _clean(fields.get("ProductName")),
+            "direction": direction(src, _clean(fields.get("dst"))),
         }
         item = {k: v for k, v in item.items() if v is not None}
         if src in self.ignore_sources:
@@ -160,6 +184,8 @@ class LogAnalyzer:
                 for k, v in item.items()
                 if k in _HISTORY_KEYS and isinstance(v, (str, int, float))
             }
+            if "direction" not in clean and (d := direction(clean.get("src"), clean.get("dst"))):
+                clean["direction"] = d  # entries stored before 0.6.0
             self.history.append(clean)
             (self.recent_malware if clean.get("kind") == "malware_detected" else self.recent_ips).append(
                 {k: v for k, v in clean.items() if k != "kind"}
@@ -181,9 +207,17 @@ class LogAnalyzer:
         return out
 
     # ------------------------------------------------------------ output --
-    def ips_count(self, now: datetime, hours: int = 1) -> int:
+    def ips_count(self, now: datetime, hours: int = 1, direction: str | None = None) -> int:
         cutoff = now - timedelta(hours=hours)
-        return sum(1 for i in self.ips if i["_t"] >= cutoff)
+        return sum(1 for i in self.ips if i["_t"] >= cutoff and (direction is None or i.get("direction") == direction))
+
+    def direction_counts(self, now: datetime, days: int, kind: str = "ips_attack") -> dict[str, int]:
+        """Stored detections of one kind per direction over the last days."""
+        out = dict.fromkeys(DIRECTIONS, 0)
+        for item in self.history_since(now, days, kind):
+            if item.get("direction") in out:
+                out[item["direction"]] += 1
+        return out
 
     def drop_count(self, now: datetime, hours: int = 1) -> int:
         cutoff = now - timedelta(hours=hours)

@@ -31,6 +31,9 @@ const T = {
     noDevice: "No Check Point Quantum Spark device found.", scanned: "Scanned hosts (h/day/week)",
     unique: "Threats, unique (h/day/week)", perDay: "Per day", requested: "Requested",
     highRisk: "High-risk apps", newInf: "newly infected", critInf: "critically infected", servers: "infected servers",
+    inbound: "external → internal", internal: "internal → internal", outbound: "internal → external", direction: "Direction",
+    inS: "ext→int", intS: "int→int", outS: "int→ext",
+    dirHint: "Direction is known for syslog detections only (the reports carry no source). Internal or outbound attacks deserve a closer look.",
   },
   de: {
     title: "Firewall", traffic: "Datenvolumen", sessions: "Sitzungen", ips: "IPS-Ereignisse", blocked: "Blockiert",
@@ -49,6 +52,9 @@ const T = {
     noDevice: "Kein Check-Point-Quantum-Spark-Gerät gefunden.", scanned: "Gescannte Hosts (h/Tag/Woche)",
     unique: "Bedrohungen, eindeutig (h/Tag/Woche)", perDay: "Je Tag", requested: "Angefragt",
     highRisk: "Riskante Apps", newInf: "neu infiziert", critInf: "kritisch infiziert", servers: "infizierte Server",
+    inbound: "extern → intern", internal: "intern → intern", outbound: "intern → extern", direction: "Richtung",
+    inS: "ext→int", intS: "int→int", outS: "int→ext",
+    dirHint: "Die Richtung gibt es nur für Syslog-Treffer (die Reports enthalten keine Quelle). Interne oder ausgehende Angriffe genauer ansehen.",
   },
 };
 
@@ -64,6 +70,9 @@ const BLADE = {
   identity_awareness: "Identity Awareness", application_control: "Application Control", anti_bot: "Anti-Bot",
   threat_emulation: "Threat Emulation",
 };
+
+const DIR_COLOR = { inbound: "var(--warning-color, #ffa000)", internal: "var(--error-color, #db4437)", outbound: "var(--error-color, #db4437)" };
+const DIR_ICON = { inbound: "mdi:arrow-down-bold", internal: "mdi:swap-horizontal-bold", outbound: "mdi:arrow-up-bold" };
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -155,6 +164,14 @@ class CheckpointSparkCard extends HTMLElement {
     if (!k) return s ? esc(s) : "–";
     return `<span class="pill" style="--c:${SEV_COLOR[k]}">${esc(SEV_TXT[this._lang][k])}</span>`;
   }
+  _dir(d) {
+    if (!DIR_ICON[d]) return "";
+    return `<span class="pill dir" style="--c:${DIR_COLOR[d]}"><ha-icon icon="${DIR_ICON[d]}"></ha-icon>${esc(this._t[d])}</span>`;
+  }
+  _dirCounts(period = "1d") {
+    const all = this._a("detections_30d", "ips_by_direction");
+    return all ? all[period] || null : null;
+  }
   _time(iso) {
     const d = new Date(iso);
     if (isNaN(d)) return "–";
@@ -188,7 +205,8 @@ class CheckpointSparkCard extends HTMLElement {
     const kpis = [
       ["traffic", "mdi:swap-vertical-bold", t.traffic, this._gb(this._v(this._p("traffic")) != null ? this._v(this._p("traffic")) * 1e9 : null), "var(--info-color, #42a5f5)"],
       ["sessions", "mdi:lan-connect", t.sessions, this._num(this._v(this._p("sessions"))), "#ab47bc"],
-      ["ips", "mdi:shield-alert", t.ips, this._num(this._v(this._p("ips_events"))), this._warn(this._v(this._p("ips_events")), "#ffa000")],
+      ["ips", "mdi:shield-alert", t.ips, this._num(this._v(this._p("ips_events"))), this._warn(this._v(this._p("ips_events")), "#ffa000"),
+        (() => { const c = this._dirCounts("1d"); return c ? `${c.inbound} ${t.inS} · ${c.internal} ${t.intS} · ${c.outbound} ${t.outS}` : ""; })()],
       ["blocked", "mdi:virus", t.blocked, this._num(this._v(this._p("virus_incidents"))), this._warn(this._v(this._p("virus_incidents")), "#ffa000")],
       ["bots", "mdi:robot-angry", t.bots, this._num(this._v(this._p("bot_incidents"))), this._warn(this._v(this._p("bot_incidents")), "var(--error-color, #db4437)")],
       ["infected", "mdi:laptop-off", t.infected, this._num(this._v(this._p("infected_hosts"))), this._warn(this._v(this._p("infected_hosts")), "var(--error-color, #db4437)")],
@@ -202,9 +220,9 @@ class CheckpointSparkCard extends HTMLElement {
             <span class="muted small">${esc(periodLabel)}</span></div>
           <div class="chips">${this._chips()}</div>
         </div>
-        <div class="kpis">${kpis.map(([k, icon, label, val, color]) => `
+        <div class="kpis">${kpis.map(([k, icon, label, val, color, sub]) => `
           <button class="kpi" data-kpi="${k}" style="--c:${color}">
-            <ha-icon icon="${icon}"></ha-icon><div><div class="val">${val}</div><div class="lbl">${esc(label)}</div></div>
+            <ha-icon icon="${icon}"></ha-icon><div><div class="val">${val}</div><div class="lbl">${esc(label)}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</div>
           </button>`).join("")}</div>
         <div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${this._tab === k ? "on" : ""}" data-tab="${k}">${esc(l)}</button>`).join("")}</div>
         <div class="body">${this._tabContent(this._tab)}</div>
@@ -279,12 +297,14 @@ class CheckpointSparkCard extends HTMLElement {
       const src = (drops && drops.attributes.top_sources) || [];
       const sc = this._s("scanned_hosts"), dt = this._s("detected_threats");
       const triple = (s) => (s ? `${s.attributes.hour ?? "–"} / ${esc(s.state)} / ${s.attributes.week ?? "–"}` : "–");
-      return `<div class="kv"><span>${esc(t.ips)} / h</span><b>${this._num(this._v("ips_events_1h"))}</b></div>
+      const ih = this._s("ips_events_1h");
+      const split = ih ? ` <span class="muted">(${ih.attributes.last_hour_inbound ?? 0} ${esc(t.inS)} · ${ih.attributes.last_hour_internal ?? 0} ${esc(t.intS)} · ${ih.attributes.last_hour_outbound ?? 0} ${esc(t.outS)})</span>` : "";
+      return `<div class="kv"><span>${esc(t.ips)} / h</span><b>${this._num(this._v("ips_events_1h"))}${split}</b></div>
         <div class="kv"><span>${esc(t.drops)} / h</span><b>${this._num(this._v("firewall_drops_1h"))}</b></div>
         <div class="kv"><span>${esc(t.scanned)}</span><b>${triple(sc)}</b></div>
         <div class="kv"><span>${esc(t.unique)}</span><b>${triple(dt)}</b></div>
         <h4>${esc(t.lastDet)}</h4>` +
-        this._table([t.name, t.time, t.severity], hist.slice(0, 15).map((h, i) => `<tr class="click" data-det="${i}"><td class="n">${esc(h.name || h.attack || "–")}<div class="muted small">${this._who(h.src)}</div></td><td class="r">${esc(this._time(h.time))}</td><td class="r">${this._sev(h.severity)} ›</td></tr>`)) +
+        this._table([t.name, t.time, t.severity], hist.slice(0, 15).map((h, i) => `<tr class="click" data-det="${i}"><td class="n">${esc(h.name || h.attack || "–")}<div class="muted small">${this._dir(h.direction)} ${this._who(h.src)}</div></td><td class="r">${esc(this._time(h.time))}</td><td class="r">${this._sev(h.severity)} ›</td></tr>`)) +
         `<h4>${esc(t.topSrc)}</h4>` +
         this._table([t.source, t.hits], src.map((s) => `<tr><td class="n">${this._who(s.name)}</td><td class="r">${this._num(s.count)}</td></tr>`));
     }
@@ -331,7 +351,11 @@ class CheckpointSparkCard extends HTMLElement {
       case "ips": {
         title = t.ips;
         const prot = this._a(this._p("ips_events", "daily"), "top_protections") || [];
-        body = counts([[t.ips, "ips_events"]]) + `<h4>${esc(t.topProt)} · ${esc(t.d24)}</h4>` +
+        const dirs = ["1d", "7d", "30d"].map((p) => this._dirCounts(p));
+        const dirTable = dirs[0] ? `<h4>${esc(t.direction)} (Syslog)</h4>` + this._table(["", t.d24, t.d7, t.d30],
+          ["inbound", "internal", "outbound"].map((d) => `<tr><td>${this._dir(d)}</td>${dirs.map((c) => `<td class="r">${this._num(c ? c[d] : null)}</td>`).join("")}</tr>`)) +
+          `<div class="muted small pad">${esc(t.dirHint)}</div>` : "";
+        body = counts([[t.ips, "ips_events"]]) + dirTable + `<h4>${esc(t.topProt)} · ${esc(t.d24)}</h4>` +
           this._table([t.name, t.hits, t.severity], prot.map((i) => `<tr><td class="n">${esc(i.name)}${i.cve ? `<div class="muted small">${i.cve.split(",").map((c) => c.trim()).filter((c) => /^CVE-\d+-\d+$/.test(c)).slice(0, 3).map((c) => `<a href="https://nvd.nist.gov/vuln/detail/${c}" target="_blank" rel="noopener">${c}</a>`).join(" · ")}</div>` : ""}</td><td class="r">${this._num(i.sessions)}</td><td class="r">${this._sev(i.severity)}</td></tr>`)) +
           this._detList("ips_attack");
         break;
@@ -357,7 +381,7 @@ class CheckpointSparkCard extends HTMLElement {
     if (!this._s("detections_30d")) return "";
     const hist = (this._a("detections_30d", "history") || []).map((h, i) => [h, i]).filter(([h]) => h.kind === kind);
     return `<h4>${esc(t.lastDet)}</h4>` + this._table([t.time, t.name, t.source], hist.slice(0, 15).map(([h, i]) =>
-      `<tr class="click" data-det="${i}"><td>${esc(this._time(h.time))}</td><td class="n">${esc(h.name || h.attack || "–")}</td><td class="r">${this._who(h.src)} ›</td></tr>`));
+      `<tr class="click" data-det="${i}"><td>${esc(this._time(h.time))}</td><td class="n">${esc(h.name || h.attack || "–")}<div class="small">${this._dir(h.direction)}</div></td><td class="r">${this._who(h.src)} ›</td></tr>`));
   }
 
   _openDetection(i) {
@@ -369,6 +393,7 @@ class CheckpointSparkCard extends HTMLElement {
     this._show(h.name || h.attack || "–",
       kv(t.time, esc(new Date(h.time).toLocaleString(this._hass.locale?.language))) +
       kv(t.severity, this._sev(h.severity)) + kv(t.action, esc(h.action || "–")) +
+      (h.direction ? kv(t.direction, this._dir(h.direction)) : "") +
       kv(t.source, this._who(h.src)) + kv(t.target, this._who(h.dst)) +
       (h.product ? kv("Blade", esc(h.product)) : "") +
       (cves.length ? kv("CVE", cves.map((c) => `<a href="https://nvd.nist.gov/vuln/detail/${c}" target="_blank" rel="noopener">${c}</a>`).join(" · ")) : "") +
@@ -405,6 +430,8 @@ const CSS = `
   .kpi ha-icon { color: var(--c); flex: none; }
   .kpi .val { font-size: 20px; font-weight: 500; color: var(--c); line-height: 1.15; white-space: nowrap; }
   .kpi .lbl { font-size: 11px; color: var(--secondary-text-color); text-transform: uppercase; letter-spacing: .4px; }
+  .kpi .sub { font-size: 11px; color: var(--secondary-text-color); white-space: nowrap; }
+  .pill.dir ha-icon { --mdc-icon-size: 12px; margin-right: 2px; vertical-align: -1px; }
   .tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--divider-color); margin-top: 4px; }
   .tab { background: none; border: none; padding: 8px 10px; cursor: pointer; color: var(--secondary-text-color); font: inherit; font-size: 13px;
          border-bottom: 2px solid transparent; white-space: nowrap; }
