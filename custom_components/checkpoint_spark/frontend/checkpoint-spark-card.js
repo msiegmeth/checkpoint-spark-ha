@@ -211,6 +211,28 @@ class CheckpointSparkCard extends HTMLElement {
     }
   }
 
+  connectedCallback() {
+    // charts are drawn 1:1 in the real width (no stretching → undistorted text)
+    if (!this._ro && window.ResizeObserver) {
+      this._ro = new ResizeObserver((entries) => {
+        const w = Math.round(entries[0].contentRect.width);
+        if (w && Math.abs(w - (this._w || 0)) > 8) {
+          this._w = w;
+          clearTimeout(this._rt);
+          this._rt = setTimeout(() => this._render(), 60);
+        }
+      });
+      this._ro.observe(this);
+    }
+  }
+
+  disconnectedCallback() {
+    if (this._ro) { this._ro.disconnect(); this._ro = null; }
+  }
+
+  /** Drawing width for SVG charts = card content width. */
+  get _cw() { return Math.max(300, (this._w || 640) - 28); }
+
   getCardSize() { return 12; }
   // full width in sections views (event viewer needs the space); users can still resize it
   getGridOptions() { return { columns: "full", min_columns: 6 }; }
@@ -405,7 +427,7 @@ class CheckpointSparkCard extends HTMLElement {
   _barChart() {
     const hist = [...(this._a(this._pk("traffic"), "bandwidth_history") || [])].reverse();
     if (!hist.length) return `<div class="muted pad">${esc(this._t.noData)}</div>`;
-    const W = 600, H = 150, L = 50, B = 20, top = 8;
+    const W = this._cw, H = 150, L = 54, B = 20, top = 8;
     const totals = hist.map((h) => (h.down_bytes || 0) + (h.up_bytes || 0));
     const step = niceStep(Math.max(...totals, 1));
     const ymax = Math.ceil(Math.max(...totals, 1) / step) * step;
@@ -415,7 +437,7 @@ class CheckpointSparkCard extends HTMLElement {
     for (let g = 0; g <= ymax * 1.0001; g += step) {
       svg += `<line x1="${L}" x2="${W}" y1="${y(g)}" y2="${y(g)}" class="grid"/><text x="${L - 6}" y="${y(g) + 3}" class="ax" text-anchor="end">${esc(this._bytes(g))}</text>`;
     }
-    const every = Math.ceil(hist.length / 6);
+    const every = Math.ceil(hist.length / Math.max(3, Math.floor(W / 90)));
     const withDate = this._st.period === "weekly" || this._st.period === "monthly";
     hist.forEach((h, i) => {
       const x = L + i * bw + bw * 0.15, w = bw * 0.7;
@@ -427,7 +449,7 @@ class CheckpointSparkCard extends HTMLElement {
         svg += `<text x="${x + w / 2}" y="${H - 5}" class="ax" text-anchor="middle">${esc(lab)}</text>`;
       }
     });
-    return `<svg viewBox="0 0 ${W} ${H}" class="chart" preserveAspectRatio="none">${svg}</svg>
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="chart">${svg}</svg>
       <div class="legend">${this._pill(this._t.down, PALETTE[0])} ${this._pill(this._t.up, PALETTE[1])}</div>`;
   }
 
@@ -450,7 +472,7 @@ class CheckpointSparkCard extends HTMLElement {
   _sankey(cols, links, fmt) {
     links = links.filter((l) => l.v > 0);
     if (!links.length) return `<div class="muted pad">${esc(this._t.noData)}</div>`;
-    const W = 600, padY = 6, nodeW = 10, gap = 8;
+    const W = this._cw, padY = 6, nodeW = 10, gap = 8;
     const val = {};
     for (const l of links) { val[l.s] = val[l.s] || { i: 0, o: 0 }; val[l.t] = val[l.t] || { i: 0, o: 0 }; val[l.s].o += l.v; val[l.t].i += l.v; }
     const used = cols.map((c) => c.filter((n) => val[n.id]));
@@ -459,7 +481,8 @@ class CheckpointSparkCard extends HTMLElement {
     const H = Math.max(140, maxN * 26 + 20);
     const scale = Math.min(...used.map((c, i) => (c.length ? (H - 2 * padY - gap * (c.length - 1)) / (colTotal[i] || 1) : Infinity)));
     const pos = {};
-    const x0 = 130, x1 = W - 175;
+    const narrow = W < 480;
+    const x0 = narrow ? 95 : 140, x1 = W - (narrow ? 120 : 190);
     used.forEach((c, ci) => {
       const x = x0 + ((x1 - x0) * ci) / Math.max(1, cols.length - 1);
       const h = c.reduce((s, n) => s + Math.max(val[n.id].i, val[n.id].o) * scale, 0) + gap * Math.max(0, c.length - 1);
@@ -482,11 +505,12 @@ class CheckpointSparkCard extends HTMLElement {
     for (const p of Object.values(pos)) {
       const v = Math.max(val[p.n.id].i, val[p.n.id].o);
       const last = p.ci === cols.length - 1;
-      const label = p.n.label.length > 24 ? p.n.label.slice(0, 23) + "…" : p.n.label;
+      const maxLen = narrow ? 13 : 26;
+      const label = p.n.label.length > maxLen ? p.n.label.slice(0, maxLen - 1) + "…" : p.n.label;
       svg += `<rect x="${p.x}" y="${p.y}" width="${nodeW}" height="${p.h}" fill="${p.n.color}" rx="2"><title>${esc(p.n.label)}: ${esc(fmt(v))}</title></rect>`;
       svg += `<text x="${last ? p.x + nodeW + 6 : p.x - 6}" y="${p.y + p.h / 2 + 4}" class="lab" text-anchor="${last ? "start" : "end"}">${esc(label)} <tspan class="sub">${esc(fmt(v))}</tspan></text>`;
     }
-    return `<svg viewBox="0 0 ${W} ${H}" class="sankey">${svg}</svg>`;
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="sankey">${svg}</svg>`;
   }
 
   /* ------------------------------------------------ threat prevention -- */
@@ -694,8 +718,7 @@ const CSS = `
   .hint { padding: 10px 12px; border-radius: 10px; font-size: 13px; margin: 8px 0; background: color-mix(in srgb, var(--warning-color, #ffa000) 12%, transparent); }
   code { display: block; padding: 6px; border-radius: 6px; font-size: 12px; word-break: break-all; background: rgba(127,127,127,.12); }
   a { color: var(--primary-color); }
-  svg.chart { width: 100%; height: 150px; display: block; }
-  svg.sankey { width: 100%; height: auto; display: block; }
+  svg.chart, svg.sankey { display: block; max-width: 100%; height: auto; }
   .grid { stroke: var(--divider-color); stroke-width: 1; opacity: .6; }
   .ax { fill: var(--secondary-text-color); font-size: 10px; }
   .lab { fill: var(--primary-text-color); font-size: 11px; } .lab .sub { fill: var(--secondary-text-color); }
