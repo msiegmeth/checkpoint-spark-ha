@@ -78,3 +78,16 @@ def test_snappy_rejects_garbage(bad: bytes) -> None:
 def test_size_limit() -> None:
     with pytest.raises(TelemetryError):
         snappy_decompress(_varint(10**9))
+
+
+def test_snappy_stream_and_gzip() -> None:
+    import gzip
+
+    from custom_components.checkpoint_spark.telemetry import SNAPPY_STREAM_MAGIC, decompress
+
+    req = _series({"__name__": "up"}, [(1, 1.0)])
+    block = _snappy_literal(req)
+    framed = SNAPPY_STREAM_MAGIC + bytes([0x00]) + (len(block) + 4).to_bytes(3, "little") + b"\0\0\0\0" + block
+    assert parse_write_request(decompress(framed, "snappy"))[0]["labels"] == {"__name__": "up"}
+    assert parse_write_request(decompress(gzip.compress(req), "gzip"))[0]["samples"] == [(1, 1.0)]
+    assert decompress(block, "snappy") == req

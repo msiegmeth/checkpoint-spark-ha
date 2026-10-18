@@ -602,6 +602,7 @@ class SparkTelemetrySensor(SparkEntity, SensorEntity):
             "requests": st.requests,
             "rejected": st.rejected,
             "dropped_series": st.dropped_series,
+            "last_error": st.last_error,
             "last_received": st.last_received.isoformat() if st.last_received else None,
             "metrics": dict(list(names.items())[:150]),
         }

@@ -93,6 +93,56 @@ def snappy_decompress(buf: bytes) -> bytes:
     return bytes(out)
 
 
+SNAPPY_STREAM_MAGIC = b"\xff\x06\x00\x00sNaPpY"
+
+
+def snappy_stream_decompress(buf: bytes) -> bytes:
+    """Snappy *framing* format (stream identifier + compressed/uncompressed chunks)."""
+    out = bytearray()
+    pos, n = 0, len(buf)
+    while pos < n:
+        if pos + 4 > n:
+            raise TelemetryError("truncated chunk header")
+        ctype = buf[pos]
+        ln = int.from_bytes(buf[pos + 1:pos + 4], "little")
+        pos += 4
+        if pos + ln > n:
+            raise TelemetryError("truncated chunk")
+        chunk = buf[pos:pos + ln]
+        pos += ln
+        if ctype == 0x00:  # compressed: 4-byte CRC + snappy block
+            out += snappy_decompress(chunk[4:])
+        elif ctype == 0x01:  # uncompressed: 4-byte CRC + data
+            out += chunk[4:]
+        elif ctype == 0xFF:
+            if chunk != b"sNaPpY":
+                raise TelemetryError("bad stream identifier")
+        elif 0x02 <= ctype <= 0x7F:
+            raise TelemetryError(f"reserved unskippable chunk {ctype:#x}")
+        # 0x80-0xfe: skippable / padding
+        if len(out) > MAX_UNCOMPRESSED:
+            raise TelemetryError("uncompressed payload too large")
+    return bytes(out)
+
+
+def decompress(body: bytes, encoding: str = "") -> bytes:
+    """Detect the compression by magic bytes (more reliable than the header)."""
+    if body.startswith(SNAPPY_STREAM_MAGIC):
+        return snappy_stream_decompress(body)
+    if body[:2] == b"\x1f\x8b":
+        import gzip  # noqa: PLC0415
+        import zlib  # noqa: PLC0415
+
+        d = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        out = d.decompress(body, MAX_UNCOMPRESSED + 1)
+        if len(out) > MAX_UNCOMPRESSED:
+            raise TelemetryError("uncompressed payload too large")
+        return out
+    if "snappy" in encoding.lower() or not encoding:
+        return snappy_decompress(body)
+    return body
+
+
 # ---------------------------------------------------------------- protobuf --
 def _fields(buf: bytes):
     """Iterate (field_number, wire_type, value) of a protobuf message."""
@@ -172,6 +222,7 @@ class TelemetryStore:
         self.dropped_series = 0
         self.last_received: datetime | None = None
         self.listeners: list[Any] = []
+        self.last_error: str | None = None
 
     def add(self, series: list[dict[str, Any]], now: datetime) -> int:
         stored = 0

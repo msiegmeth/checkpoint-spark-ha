@@ -14,15 +14,16 @@ from homeassistant.helpers.http import KEY_HASS
 from homeassistant.util import dt as dt_util
 
 from .const import CONF_TELEMETRY_PASSWORD, CONF_TELEMETRY_USERNAME, DOMAIN
-from .telemetry import MAX_BODY, TelemetryError, parse_write_request, snappy_decompress
+from .telemetry import MAX_BODY, TelemetryError, decompress, parse_write_request
 
 _LOGGER = logging.getLogger(__name__)
 TELEMETRY_URL = f"/api/{DOMAIN}/telemetry"
 
 
 def _decode(body: bytes, encoding: str) -> list:
-    raw = snappy_decompress(body) if "snappy" in encoding else body
-    return parse_write_request(raw)
+    if encoding.lower() in ("identity",):
+        return parse_write_request(body)
+    return parse_write_request(decompress(body, encoding))
 
 
 class TelemetryView(HomeAssistantView):
@@ -56,8 +57,18 @@ class TelemetryView(HomeAssistantView):
         if (request.content_length or 0) > MAX_BODY:
             store.rejected += 1
             return web.Response(status=413)
-        body = await request.content.read(MAX_BODY + 1)
-        if len(body) > MAX_BODY:
+        # read the whole body (content.read(n) only returns what is buffered), bounded
+        chunks, size = [], 0
+        while True:
+            chunk = await request.content.read(65536)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > MAX_BODY:
+                break
+            chunks.append(chunk)
+        body = b"".join(chunks)
+        if size > MAX_BODY:
             store.rejected += 1
             return web.Response(status=413)
         if "write.v2" in (request.headers.get("Content-Type") or ""):
@@ -68,7 +79,12 @@ class TelemetryView(HomeAssistantView):
             series = await hass.async_add_executor_job(_decode, body, request.headers.get("Content-Encoding", "snappy"))
         except (TelemetryError, ValueError, IndexError) as err:
             store.rejected += 1
-            _LOGGER.debug("Telemetry payload rejected: %s", err)
+            store.last_error = (
+                f"{err} | Content-Type={request.headers.get('Content-Type')} "
+                f"Content-Encoding={request.headers.get('Content-Encoding')} len={len(body)} "
+                f"head={body[:24].hex()}"
+            )
+            _LOGGER.debug("Telemetry payload rejected: %s", store.last_error)
             return web.Response(status=400)
         store.add(series, dt_util.utcnow())
         for listener in list(store.listeners):
