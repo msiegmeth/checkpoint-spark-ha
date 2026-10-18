@@ -4,6 +4,14 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.1] - 2026-10-18
+
+### Fixed
+- Sensors for values a report only contains now and then (e.g. IPS events or
+  high-risk apps in the hourly report) no longer turn *unavailable* after a
+  restart. Once created they stay and show *unknown* until the value is back.
+- The gateway's OpenTelemetry *Test Connection* now reports success.
+
 ## [0.6.0] - 2026-10-18
 
 ### New

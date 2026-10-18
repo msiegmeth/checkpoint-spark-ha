@@ -22,6 +22,7 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -755,16 +756,21 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
+    registry = er.async_get(hass)
     entities: list[SensorEntity] = [SparkBladesSensor(coordinator)]
     blades = _blades(coordinator)
     for report_type in coordinator.report_types:
         entities.append(SparkReportTimestampSensor(coordinator, report_type))
         report = coordinator.data.reports.get(report_type) or {}
-        # Only create what this report type (and firmware) actually delivers.
+        # Create what this report type (and firmware) delivers – and keep sensors that were created
+        # before: some values (e.g. IPS in the hourly report) only appear now and then.
         entities.extend(
             SparkSummarySensor(coordinator, report_type, description, blades)
             for description in SUMMARY_SENSORS
             if _has_summary(report, description.header)
+            or registry.async_get_entity_id(
+                "sensor", DOMAIN, f"{entry.unique_id}_{report_type}_{description.key}"
+            )
         )
     system = coordinator.data.system
     entities.extend(
