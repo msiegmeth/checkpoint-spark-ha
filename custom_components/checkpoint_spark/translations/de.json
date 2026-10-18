@@ -114,7 +114,7 @@
         "name": "IPS-Ereignisse stündlich"
       },
       "hourly_virus_incidents": {
-        "name": "Viren-Vorfälle stündlich"
+        "name": "Malware-Vorfälle stündlich"
       },
       "hourly_bot_incidents": {
         "name": "Bot-Vorfälle stündlich"
@@ -159,7 +159,7 @@
         "name": "IPS-Ereignisse täglich"
       },
       "daily_virus_incidents": {
-        "name": "Viren-Vorfälle täglich"
+        "name": "Malware-Vorfälle täglich"
       },
       "daily_bot_incidents": {
         "name": "Bot-Vorfälle täglich"
@@ -204,7 +204,7 @@
         "name": "IPS-Ereignisse wöchentlich"
       },
       "weekly_virus_incidents": {
-        "name": "Viren-Vorfälle wöchentlich"
+        "name": "Malware-Vorfälle wöchentlich"
       },
       "weekly_bot_incidents": {
         "name": "Bot-Vorfälle wöchentlich"
@@ -249,7 +249,7 @@
         "name": "IPS-Ereignisse monatlich"
       },
       "monthly_virus_incidents": {
-        "name": "Viren-Vorfälle monatlich"
+        "name": "Malware-Vorfälle monatlich"
       },
       "monthly_bot_incidents": {
         "name": "Bot-Vorfälle monatlich"

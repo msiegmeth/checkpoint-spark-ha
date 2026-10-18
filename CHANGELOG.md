@@ -4,6 +4,13 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.1] - 2026-10-18
+
+### Changed
+- "Virus incidents" are now called **"Malware incidents"** – the counter covers
+  all malware the anti-virus blade blocks, not only viruses. Entity IDs stay the
+  same, so automations and dashboards keep working.
+
 ## [0.5.0] - 2026-10-18
 
 ### New

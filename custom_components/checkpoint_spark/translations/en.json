@@ -114,7 +114,7 @@
         "name": "Hourly IPS events"
       },
       "hourly_virus_incidents": {
-        "name": "Hourly virus incidents"
+        "name": "Hourly malware incidents"
       },
       "hourly_bot_incidents": {
         "name": "Hourly bot incidents"
@@ -159,7 +159,7 @@
         "name": "Daily IPS events"
       },
       "daily_virus_incidents": {
-        "name": "Daily virus incidents"
+        "name": "Daily malware incidents"
       },
       "daily_bot_incidents": {
         "name": "Daily bot incidents"
@@ -204,7 +204,7 @@
         "name": "Weekly IPS events"
       },
       "weekly_virus_incidents": {
-        "name": "Weekly virus incidents"
+        "name": "Weekly malware incidents"
       },
       "weekly_bot_incidents": {
         "name": "Weekly bot incidents"
@@ -249,7 +249,7 @@
         "name": "Monthly IPS events"
       },
       "monthly_virus_incidents": {
-        "name": "Monthly virus incidents"
+        "name": "Monthly malware incidents"
       },
       "monthly_bot_incidents": {
         "name": "Monthly bot incidents"

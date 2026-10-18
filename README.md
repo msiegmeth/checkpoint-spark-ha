@@ -104,7 +104,7 @@ contains (e.g. the hourly report has no IPS or high-risk figures).
 | `<type>` sessions | – | `top_apps_by_sessions`, `top_sites_by_sessions`, `top_categories_by_sessions`, `top_users_by_sessions` |
 | `<type>` high-risk app sessions | – | `top_high_risk_apps`, `top_high_risk_users` |
 | `<type>` IPS events | – | `top_protections` (name, sessions, severity, CVE) |
-| `<type>` virus incidents | – | `top_malwares` (name, incidents, severity) |
+| `<type>` malware incidents (entity id `…_virus_incidents`) | – | `top_malwares` (name, incidents, severity) |
 | `<type>` bot incidents | – | – |
 | `<type>` infected hosts | – | `top_infected_hosts`, `infected_hosts`, `possibly_infected_hosts` |
 | `<type>` newly / critically infected hosts, infected servers | – | – |
