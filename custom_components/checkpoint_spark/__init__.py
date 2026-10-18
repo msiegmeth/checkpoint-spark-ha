@@ -29,6 +29,7 @@ from .const import (
 from .coordinator import SparkConfigEntry, SparkCoordinator
 from .services import async_setup_services
 from .syslog import SyslogReceiver, split_hosts
+from .geo import GeoIP
 from .telemetry import TelemetryStore
 
 _LOGGER = logging.getLogger(__name__)
@@ -98,6 +99,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: SparkConfigEntry) -> boo
         else:
             coordinator.syslog = receiver
             entry.async_on_unload(receiver.async_stop)
+            # threat map: offline IP -> country database (downloaded/loaded in the background)
+            coordinator.geo = GeoIP(hass)
+            coordinator.geo.async_start()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

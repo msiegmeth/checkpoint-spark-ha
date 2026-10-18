@@ -364,6 +364,9 @@
       },
       "drops": {
         "name": "Dropped packets"
+      },
+      "threat_map": {
+        "name": "Threat map (countries)"
       }
     },
     "binary_sensor": {

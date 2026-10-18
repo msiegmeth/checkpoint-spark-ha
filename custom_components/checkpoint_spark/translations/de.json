@@ -364,6 +364,9 @@
       },
       "drops": {
         "name": "Verworfene Pakete"
+      },
+      "threat_map": {
+        "name": "Bedrohungskarte (Länder)"
       }
     },
     "binary_sensor": {

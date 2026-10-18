@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import logging
+import socket
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -101,6 +103,8 @@ class SparkCoordinator(DataUpdateCoordinator[SparkData]):
         self._force = False
         self.syslog: Any = None  # SyslogReceiver when enabled in the options
         self.telemetry: Any = None  # TelemetryStore when enabled in the options
+        self.geo: Any = None  # GeoIP (threat map) when syslog is enabled
+        self.site_ips: dict[str, tuple[str | None, datetime]] = {}  # report site -> (ip, resolved at)
         self.telemetry_allowed: set[str] = set()
 
     def api(self) -> SparkApi:
@@ -169,6 +173,8 @@ class SparkCoordinator(DataUpdateCoordinator[SparkData]):
             raise UpdateFailed("; ".join(errors))
 
         self._fire_threat_events(previous, result, now)
+        if self.geo is not None:
+            await self._resolve_sites(result, now)
         self._init_monitored_blades(result)
         return result
 
@@ -194,6 +200,29 @@ class SparkCoordinator(DataUpdateCoordinator[SparkData]):
                 result.system_fetched[command] = now
             except (ValueError, KeyError, IndexError) as err:
                 _LOGGER.debug("Parsing %s failed: %s", command, err)
+
+    async def _resolve_sites(self, result: SparkData, now: datetime) -> None:
+        """Resolve the report's top sites (domains) for the outbound map; cached for 24 h."""
+        names: list[str] = []
+        for report in result.reports.values():
+            for item in _chart(report if isinstance(report, dict) else {}, "topSitesByBandwidthChart"):
+                name = str(item.get("name") or "").strip().lower()
+                if name and "." in name and " " not in name and name not in names:
+                    names.append(name)
+        todo = [n for n in names if n not in self.site_ips or now - self.site_ips[n][1] > timedelta(hours=24)][:40]
+
+        async def resolve(name: str) -> None:
+            try:
+                infos = await asyncio.wait_for(
+                    self.hass.loop.getaddrinfo(name, None, family=socket.AF_INET), timeout=3
+                )
+                ip = infos[0][4][0] if infos else None
+            except (OSError, TimeoutError):
+                ip = None
+            self.site_ips[name] = (ip, now)
+
+        if todo:
+            await asyncio.gather(*(resolve(n) for n in todo))
 
     # ------------------------------------------------------------ events --
     def _event_report_type(self, fetched_now: SparkData, previous: SparkData) -> str | None:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+import time
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -768,6 +769,102 @@ class SparkTelemetrySensor(SparkEntity, SensorEntity):
         }
 
 
+class SparkThreatMapSensor(SparkEntity, SensorEntity):
+    """Countries attacking (inbound, 24 h) and receiving traffic (outbound) – data for the card's map."""
+
+    _attr_translation_key = "threat_map"
+    _attr_icon = "mdi:earth"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _unrecorded_attributes = frozenset({"inbound", "inbound_ips", "outbound_syslog", "outbound_report", "ticker", "attribution"})
+
+    def __init__(self, coordinator: SparkCoordinator) -> None:
+        super().__init__(coordinator, "threat_map")
+        self._pending = None
+        self._cache: tuple[float, dict[str, Any]] | None = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self.coordinator.syslog.async_add_listener(self._message))
+
+    def _message(self) -> None:
+        if self._pending is None:
+            self._pending = self.hass.loop.call_later(30, self._write)
+
+    def _write(self) -> None:
+        self._pending = None
+        self.async_write_ha_state()
+
+    def _data(self) -> dict[str, Any]:
+        """Computed at most every 20 s (state and attributes share one result)."""
+        mono = time.monotonic()
+        if self._cache and mono - self._cache[0] < 20:
+            return self._cache[1]
+        data = self._compute()
+        self._cache = (mono, data)
+        return data
+
+    def _compute(self) -> dict[str, Any]:
+        geo, a = self.coordinator.geo, self.coordinator.syslog.analyzer
+        if geo is None or not geo.ready:
+            return {}
+        now = dt_util.utcnow()
+        inbound: dict[str, dict[str, int]] = {}
+        ticker: list[dict[str, Any]] = []
+        for t, src, svc in a.drops:  # 24 h window
+            cc = geo.lookup(src)
+            if cc:
+                inbound.setdefault(cc, {"drops": 0, "ips": 0, "critical": 0})["drops"] += 1
+        for t, src, svc in list(a.drops)[-12:]:
+            if (cc := geo.lookup(src)):
+                ticker.append({"time": t.isoformat(), "cc": cc, "type": "drop", "name": svc or "", "src": src})
+        ips_by_period: dict[str, dict[str, int]] = {}
+        for days in (1, 7, 30):
+            counts: dict[str, int] = {}
+            for item in a.history_since(now, days, "ips_attack"):
+                if item.get("direction") == "inbound" and (cc := geo.lookup(item.get("src"))):
+                    counts[cc] = counts.get(cc, 0) + 1
+                    if days == 1:
+                        e = inbound.setdefault(cc, {"drops": 0, "ips": 0, "critical": 0})
+                        e["ips"] += 1
+                        e["critical"] += item.get("severity") == "critical"
+            ips_by_period[f"{days}d"] = counts
+        for item in list(a.history_since(now, 1, "ips_attack"))[-8:]:
+            if item.get("direction") == "inbound" and (cc := geo.lookup(item.get("src"))):
+                ticker.append({"time": item["time"], "cc": cc, "type": "ips", "name": item.get("name"),
+                               "severity": item.get("severity"), "src": item.get("src")})
+        ticker.sort(key=lambda x: x["time"], reverse=True)
+        out_sys: dict[str, dict[str, Any]] = {}
+        for t, dst, nbytes, name in a.outbound:
+            if (cc := geo.lookup(dst)):
+                e = out_sys.setdefault(cc, {"bytes": 0, "count": 0, "names": {}})
+                e["bytes"] += nbytes
+                e["count"] += 1
+                e["names"][name] = e["names"].get(name, 0) + nbytes
+        for e in out_sys.values():
+            e["names"] = [n for n, _ in sorted(e["names"].items(), key=lambda x: -x[1])[:5]]
+        out_rep: dict[str, dict[str, dict[str, Any]]] = {}
+        for period, report in self.coordinator.data.reports.items():
+            per: dict[str, dict[str, Any]] = {}
+            for item in _chart(report if isinstance(report, dict) else {}, "topSitesByBandwidthChart"):
+                ip = (self.coordinator.site_ips.get(str(item.get("name") or "").lower()) or (None,))[0]
+                if (cc := geo.lookup(ip)):
+                    e = per.setdefault(cc, {"bytes": 0, "sites": []})
+                    e["bytes"] += item.get("bytes") or 0
+                    e["sites"].append(item.get("name"))
+            out_rep[period] = per
+        return {"inbound": inbound, "inbound_ips": ips_by_period, "outbound_syslog": out_sys,
+                "outbound_report": out_rep, "ticker": ticker[:20]}
+
+    @property
+    def native_value(self) -> int | None:
+        data = self._data()
+        return len(data["inbound"]) if data else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {**self._data(), "attribution": "IP Geolocation by DB-IP (CC BY 4.0); map: Natural Earth"}
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: SparkConfigEntry,
@@ -799,6 +896,8 @@ async def async_setup_entry(
         entities.extend(SparkTelemetryValueSensor(coordinator, d) for d in TELEMETRY_SENSORS)
     if coordinator.syslog:
         entities.append(SparkSyslogSensor(coordinator))
+        if coordinator.geo is not None:
+            entities.append(SparkThreatMapSensor(coordinator))
         entities += [
             SparkLogSensor(coordinator, "ips_events_1h", "mdi:shield-alert"),
             SparkLogSensor(coordinator, "firewall_drops_1h", "mdi:wall-fire"),

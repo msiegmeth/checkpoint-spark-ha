@@ -4,6 +4,22 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-10-18
+
+### New
+- **Threat map** – new *Map* tab in the card, in the style of Check Point's
+  live threat map, but with *your* gateway's data. Toggle between
+  - **Inbound**: firewall drops (24 h) and IPS attacks from the internet by
+    country, animated arcs to your home location, latest-attacks ticker
+  - **Outbound**: your traffic to online services by country (report top sites
+    resolved via DNS – CDNs often show the nearest node – plus app-control
+    logs as a sample)
+- IP → country is looked up **offline** with the free DB-IP Lite Country
+  database (CC BY 4.0), downloaded once a month in the background – no IP
+  address leaves Home Assistant. Map shapes: Natural Earth (public domain).
+- New sensor *Threat map (countries)* (attacking countries in 24 h, data for
+  the map as attributes). Requires syslog reception.
+
 ## [0.7.0] - 2026-10-18
 
 ### New

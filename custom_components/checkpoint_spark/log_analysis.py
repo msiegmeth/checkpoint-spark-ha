@@ -22,6 +22,7 @@ MAX_EVENTS_PER_HOUR = 30      # global cap so a flood cannot spam notifications
 MAX_HISTORY = 2000            # persisted detections
 MAX_WINDOW_IPS = 20_000       # rolling 24 h buffers are bounded as well
 MAX_WINDOW_DROPS = 200_000
+MAX_WINDOW_OUT = 50_000         # application control / URL filtering samples (outbound map)
 
 _MALWARE_PRODUCTS = ("anti virus", "anti-virus", "anti bot", "anti-bot", "threat emulation", "threat extraction")
 _MALWARE_NAME_KEYS = ("malware_name", "malware_family", "protection_name", "virus_name", "Name", "attack")
@@ -71,6 +72,8 @@ class LogAnalyzer:
         self.retention = timedelta(days=max(1, retention_days))
         self.ips: deque[dict[str, Any]] = deque(maxlen=MAX_WINDOW_IPS)
         self.drops: deque[tuple[datetime, str | None, str | None]] = deque(maxlen=MAX_WINDOW_DROPS)
+        # (time, destination ip, bytes, application/site name) from accepted app-control / URL-filtering logs
+        self.outbound: deque[tuple[datetime, str, int, str]] = deque(maxlen=MAX_WINDOW_OUT)
         self.recent_ips: deque[dict[str, Any]] = deque(maxlen=RECENT)
         self.recent_malware: deque[dict[str, Any]] = deque(maxlen=RECENT)
         # persisted detections (IPS + malware), newest last
@@ -96,6 +99,13 @@ class LogAnalyzer:
             ):
                 if (val := _int(fields.get(key))) is not None:
                     self.anti_malware[key] = val
+            return []
+
+        if ("application control" in lower or "url filtering" in lower) and (fields.get("Action") or "").strip().lower() == "accept":
+            dst = _clean(fields.get("dst"))
+            if dst:
+                name = _clean(fields.get("name")) or _clean(fields.get("resource")) or _clean(fields.get("appi_name")) or "?"
+                self.outbound.append((now, dst, _int(fields.get("bytes")) or 0, name[:100]))
             return []
 
         if "firewall" in lower and (fields.get("Action") or "").strip().lower() == "drop":
@@ -166,6 +176,8 @@ class LogAnalyzer:
             self.ips.popleft()
         while self.drops and self.drops[0][0] < cutoff:
             self.drops.popleft()
+        while self.outbound and self.outbound[0][0] < cutoff:
+            self.outbound.popleft()
         stale = now - EVENT_DEDUP
         if len(self._last_event) > 1000:
             self._last_event = {k: t for k, t in self._last_event.items() if t >= stale}

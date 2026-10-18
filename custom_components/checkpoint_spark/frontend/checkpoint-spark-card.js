@@ -39,6 +39,10 @@ const T = {
     first: "first", last: "last", reportOnly: "report total only", loading: "loading…",
     temps: "Temperature", ram: "Memory", noStats: "No statistics yet for this period.",
     cpuLoad: "CPU load", wan: "Internet line", latency: "Latency / jitter", conns: "Connections", booted: "Running since",
+    map: "Map", inbound_m: "Inbound", outbound_m: "Outbound", countries: "Countries", ticker: "Latest attacks",
+    services: "Services", mapLoading: "Loading map…", noGeo: "The country database is being prepared (first start: up to a minute) – or syslog reception is off.",
+    noMapData: "No data for this direction yet.", mapHintIn: "Drops: last 24 h (syslog). IPS: selected period. Country of the source IP.",
+    mapHintOut: "From the report's top sites (resolved via DNS – CDN locations often show the nearest node) and app-control logs (sample).",
     perf: "Load (OpenTelemetry)", newConns: "New connections", perSec: "/s", interfaces: "Throughput per interface",
     iface: "Interface", tunnels: "VPN tunnels", contractList: "Contracts", sku: "Contract", expires: "Expires",
     drops: "Firewall drops", dropsH: "per hour", drops24: "24 h", topSrc: "Top sources (24 h)", topSvc: "Top services (24 h)",
@@ -70,6 +74,10 @@ const T = {
     first: "erstes", last: "letztes", reportOnly: "nur Report-Summe", loading: "lädt…",
     temps: "Temperatur", ram: "Arbeitsspeicher", noStats: "Für diesen Zeitraum gibt es noch keine Statistik.",
     cpuLoad: "CPU-Auslastung", wan: "Internetleitung", latency: "Latenz / Jitter", conns: "Verbindungen", booted: "Läuft seit",
+    map: "Karte", inbound_m: "Eingehend", outbound_m: "Ausgehend", countries: "Länder", ticker: "Letzte Angriffe",
+    services: "Dienste", mapLoading: "Karte wird geladen…", noGeo: "Die Länderdatenbank wird vorbereitet (beim ersten Start bis zu einer Minute) – oder der Syslog-Empfang ist aus.",
+    noMapData: "Für diese Richtung gibt es noch keine Daten.", mapHintIn: "Drops: letzte 24 h (Syslog). IPS: gewählter Zeitraum. Land der Quell-IP.",
+    mapHintOut: "Aus den Top-Seiten des Reports (per DNS aufgelöst – bei CDNs oft der nächste Knoten) und App-Control-Logs (Stichprobe).",
     perf: "Auslastung (OpenTelemetry)", newConns: "Neue Verbindungen", perSec: "/s", interfaces: "Durchsatz je Schnittstelle",
     iface: "Schnittstelle", tunnels: "VPN-Tunnel", contractList: "Verträge", sku: "Vertrag", expires: "Läuft ab",
     drops: "Firewall-Drops", dropsH: "pro Stunde", drops24: "24 h", topSrc: "Top-Quellen (24 h)", topSvc: "Top-Dienste (24 h)",
@@ -151,6 +159,18 @@ const SI_READY = import(new URL(`./checkpoint-spark-icons.js?v=${VERSION}`, impo
   .then((m) => { SI = m.SIMPLE_ICONS || {}; })
   .catch(() => { SI = {}; });
 
+// world map (Natural Earth, public domain), loaded once on demand
+let GEO = null;
+let GEO_PROMISE = null;
+function loadGeo() {
+  if (!GEO_PROMISE) {
+    GEO_PROMISE = import(new URL(`./checkpoint-spark-geo.js?v=${VERSION}`, import.meta.url))
+      .then((m) => { GEO = m; }).catch(() => { GEO = { COUNTRIES: {}, CENTROIDS: {}, MAP: { w: 1000, h: 500, latTop: 84, latBottom: -58 } }; });
+  }
+  return GEO_PROMISE;
+}
+const flag = (cc) => (/^[A-Z]{2}$/.test(cc || "") ? String.fromCodePoint(...[...cc].map((c) => 0x1f1a5 + c.charCodeAt(0))) : "🏳️");
+
 /** Brand colours that are too dark/light for one of the themes use the text colour instead. */
 function brandFill(hex) {
   const n = parseInt(hex, 16);
@@ -210,7 +230,7 @@ class CheckpointSparkCard extends HTMLElement {
     this._config = { period: "daily", resolvers: [], names: {}, ...config };
     this._st = this._st || {
       period: this._config.period, tab: "traffic", list: "apps", metric: "volume",
-      type: "all", dir: "all", sev: "all", open: new Set(),
+      type: "all", dir: "all", sev: "all", open: new Set(), mapDir: "in",
     };
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
     if (!SI) SI_READY.then(() => this._render());
@@ -333,7 +353,8 @@ class CheckpointSparkCard extends HTMLElement {
     const dev = this._device && this._hass.devices ? this._hass.devices[this._device] : null;
     const title = this._config.title || (dev && (dev.name_by_user || dev.name)) || t.title;
     if (st.tab === "system") this._loadStats();
-    const body = st.tab === "traffic" ? this._traffic() : st.tab === "tp" ? this._threats() : this._system();
+    if (st.tab === "map" && !GEO) loadGeo().then(() => this._render());
+    const body = st.tab === "traffic" ? this._traffic() : st.tab === "tp" ? this._threats() : st.tab === "map" ? this._worldMap() : this._system();
     this.shadowRoot.innerHTML = `<style>${CSS}</style>
       <ha-card>
         <div class="head">
@@ -342,7 +363,7 @@ class CheckpointSparkCard extends HTMLElement {
         </div>
         <div class="seg">${PERIODS.map((p) => `<button class="${st.period === p ? "on" : ""}" data-period="${p}">${esc(t["p_" + p])}</button>`).join("")}</div>
         ${this._summary()}
-        <div class="tabs">${[["traffic", t.traffic, "mdi:swap-vertical-bold"], ["tp", t.tp, "mdi:shield-alert"], ["system", t.system, "mdi:chip"]]
+        <div class="tabs">${[["traffic", t.traffic, "mdi:swap-vertical-bold"], ["tp", t.tp, "mdi:shield-alert"], ["map", t.map, "mdi:earth"], ["system", t.system, "mdi:chip"]]
           .map(([k, l, i]) => `<button class="tab ${st.tab === k ? "on" : ""}" data-tab="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`).join("")}</div>
         <div class="body">${body}</div>
       </ha-card>`;
@@ -359,6 +380,7 @@ class CheckpointSparkCard extends HTMLElement {
     on("[data-type]", (el) => { st.type = el.dataset.type; st.open.clear(); this._render(); });
     on("[data-dir]", (el) => { st.dir = el.dataset.dir; st.open.clear(); this._render(); });
     on("[data-sev]", (el) => { st.sev = el.dataset.sev; st.open.clear(); this._render(); });
+    on("[data-mapdir]", (el) => { st.mapDir = el.dataset.mapdir; this._render(); });
     on("[data-ev]", (el) => {
       const k = el.dataset.ev;
       st.open.has(k) ? st.open.delete(k) : st.open.add(k);
@@ -774,6 +796,76 @@ class CheckpointSparkCard extends HTMLElement {
     return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="chart">${svg}</svg><div class="legend">${legend}</div>`;
   }
 
+  /* ------------------------------------------------------------- map -- */
+  _worldMap() {
+    const t = this._t, st = this._st;
+    if (!GEO) return `<div class="muted pad">${esc(t.mapLoading)}</div>`;
+    const tm = this._s("threat_map");
+    const seg = `<div class="seg sm">${[["in", t.inbound_m, "mdi:arrow-down-bold"], ["out", t.outbound_m, "mdi:arrow-up-bold"]].map(([k, l, i]) =>
+      `<button class="${st.mapDir === k ? "on" : ""}" data-mapdir="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`).join("")}</div>`;
+    if (!tm || !tm.attributes.inbound) return seg + `<div class="hint">${esc(t.noGeo)}</div>`;
+    const a = tm.attributes, inbound = st.mapDir === "in";
+    const pk = { hourly: "1d", daily: "1d", weekly: "7d", monthly: "30d" }[st.period];
+    // country -> {v (weight), color, label}
+    const data = {};
+    if (inbound) {
+      for (const [cc, e] of Object.entries(a.inbound || {})) data[cc] = { drops: e.drops || 0, ips: 0, crit: 0 };
+      for (const [cc, n] of Object.entries((a.inbound_ips || {})[pk] || {})) (data[cc] = data[cc] || { drops: 0, ips: 0, crit: 0 }).ips = n;
+      for (const [cc, e] of Object.entries(a.inbound || {})) if (data[cc]) data[cc].crit = e.critical || 0;
+    } else {
+      const rep = (a.outbound_report || {})[st.period] || {};
+      for (const [cc, e] of Object.entries(rep)) data[cc] = { bytes: e.bytes || 0, names: [...(e.sites || [])] };
+      for (const [cc, e] of Object.entries(a.outbound_syslog || {})) {
+        const d = (data[cc] = data[cc] || { bytes: 0, names: [] });
+        d.bytes += e.bytes || 0;
+        for (const n of e.names || []) if (!d.names.includes(n)) d.names.push(n);
+      }
+    }
+    const weight = (d) => (inbound ? d.drops + d.ips * 20 : d.bytes);
+    const list = Object.entries(data).filter(([, d]) => weight(d) > 0).sort((x, y) => weight(y[1]) - weight(x[1]));
+    const max = Math.max(1, ...list.map(([, d]) => weight(d)));
+    const M = GEO.MAP, P = (lon, lat) => [((lon + 180) / 360) * M.w, ((M.latTop - lat) / (M.latTop - M.latBottom)) * M.h];
+    const home = P(this._hass.config?.longitude ?? 16.37, this._hass.config?.latitude ?? 48.2);
+    const colorIn = (d) => (d.crit ? "#ef5350" : d.ips ? "#ffa000" : "#ff7043");
+    let shapes = "";
+    for (const [cc, path] of Object.entries(GEO.COUNTRIES)) {
+      const d = data[cc];
+      const k = d ? 0.25 + 0.6 * Math.sqrt(weight(d) / max) : 0;
+      const fill = d ? (inbound ? colorIn(d) : "#66bb6a") : "";
+      shapes += `<path d="${path}" class="land" ${d ? `style="fill:${fill};fill-opacity:${k.toFixed(2)}"` : ""}><title>${esc(cc)}</title></path>`;
+    }
+    let arcs = "";
+    list.slice(0, 25).forEach(([cc, d], i) => {
+      const c = GEO.CENTROIDS[cc];
+      if (!c) return;
+      const p = P(c[0], c[1]);
+      const [a0, a1] = inbound ? [p, home] : [home, p];
+      const dist = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]);
+      if (dist < 4) return;
+      const mx = (a0[0] + a1[0]) / 2, my = (a0[1] + a1[1]) / 2 - Math.min(160, dist * 0.35);
+      const w = 0.8 + 3.2 * Math.sqrt(weight(d) / max);
+      const color = inbound ? colorIn(d) : "#66bb6a";
+      const dur = (2.2 + (i % 5) * 0.35).toFixed(2);
+      arcs += `<path d="M${a0[0].toFixed(1)},${a0[1].toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${a1[0].toFixed(1)},${a1[1].toFixed(1)}"
+        class="arc" stroke="${color}" stroke-width="${w.toFixed(1)}" style="animation-duration:${dur}s;animation-delay:${(i * 0.17).toFixed(2)}s"/>
+        <circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${(1.5 + w / 2).toFixed(1)}" fill="${color}"/>`;
+    });
+    const svg = `<svg viewBox="0 0 ${M.w} ${M.h}" class="worldmap" preserveAspectRatio="xMidYMid meet">
+      <rect width="${M.w}" height="${M.h}" class="sea"/>${shapes}${arcs}
+      <circle cx="${home[0]}" cy="${home[1]}" r="4" class="home"/><circle cx="${home[0]}" cy="${home[1]}" r="4" class="pulse"/></svg>`;
+    const fmt = (d) => (inbound ? `${this._num(d.drops)} Drops${d.ips ? ` · ${this._num(d.ips)} IPS` : ""}` : this._bytes(d.bytes));
+    const top = list.slice(0, 12).map(([cc, d]) => `<tr><td class="ic">${flag(cc)}</td><td class="n">${esc(cc)}${!inbound && d.names.length ? `<div class="muted small">${esc(d.names.slice(0, 3).join(", "))}</div>` : ""}${this._bar(weight(d), max, inbound ? colorIn(d) : "#66bb6a")}</td><td class="r">${fmt(d)}</td></tr>`);
+    const ticker = inbound ? (a.ticker || []).slice(0, 12).map((e) => `<tr><td class="nw">${esc(this._time(e.time, false))}</td><td class="ic">${flag(e.cc)}</td>
+        <td class="n">${e.type === "ips" ? this._pill("IPS", TYPE_COLOR.ips) + " " + esc(e.name || "") : `<span class="muted">Drop</span> ${esc(e.name || "")}`}<div class="muted small">${esc(e.src || "")}</div></td>
+        <td class="r">${e.type === "ips" ? this._sev(e.severity) : ""}</td></tr>`) : [];
+    return seg + `<div class="mapbox">${svg}</div>
+      <div class="muted small pad">${esc(inbound ? t.mapHintIn : t.mapHintOut)}</div>
+      ${list.length ? "" : `<div class="muted pad">${esc(t.noMapData)}</div>`}
+      <div class="two"><div><h4>${esc(t.countries)} · ${list.length}</h4>${this._table(["", t.name, ""], top)}</div>
+      ${inbound ? `<div><h4>${esc(t.ticker)}</h4>${this._table(["", "", t.name, ""], ticker)}</div>` : ""}</div>
+      <div class="muted small pad">${esc(a.attribution || "")}</div>`;
+  }
+
   /* ---------------------------------------------------------- system -- */
   _system() {
     const t = this._t;
@@ -910,6 +1002,16 @@ const CSS = `
   .legend { display: flex; gap: 6px; margin-top: 2px; }
   details.kvd > summary { list-style: none; cursor: pointer; } details.kvd > summary::-webkit-details-marker { display: none; }
   details.kvd[open] > summary .muted:last-child { transform: rotate(90deg); display: inline-block; }
+  .mapbox { border-radius: 12px; overflow: hidden; margin: 6px 0 2px; background: #0b1020; }
+  svg.worldmap { display: block; width: 100%; height: auto; }
+  .worldmap .sea { fill: #0b1020; }
+  .worldmap .land { fill: #1f2937; stroke: #374151; stroke-width: .4; }
+  .worldmap .arc { fill: none; stroke-linecap: round; stroke-dasharray: 6 10; opacity: .9; animation-name: cp-flow; animation-iteration-count: infinite; animation-timing-function: linear; }
+  .worldmap .home { fill: #29b6f6; }
+  .worldmap .pulse { fill: none; stroke: #29b6f6; stroke-width: 2; animation: cp-pulse 1.8s ease-out infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes cp-flow { from { stroke-dashoffset: 64; } to { stroke-dashoffset: 0; } }
+  @keyframes cp-pulse { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(5); } }
+  @media (prefers-reduced-motion: reduce) { .worldmap .arc, .worldmap .pulse { animation: none; } }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   @media (max-width: 600px) { .two { grid-template-columns: 1fr; } }
   .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }

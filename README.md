@@ -230,10 +230,16 @@ search for **Check Point Quantum Spark** → choose the gateway.
 - **Threat Prevention**: filters for type, direction and severity, flow
   direction → type → action, events grouped per alert and host (tap for
   targets, CVE links, requested URL, single occurrences), report totals
+- **Map**: threat map – inbound attacks / outbound traffic by country with
+  animated arcs (IP geolocation offline via DB-IP Lite, CC BY 4.0)
 - **System**: blades, internet, VPN, temperatures, memory, eMMC, contracts
 
 Optional YAML: `period`, `names` (`{ip: name}` for devices without a tracker),
 `resolvers` (own DNS servers, marked in host lists).
+
+Threat map: IP geolocation by [DB-IP](https://db-ip.com) (CC BY 4.0, downloaded
+monthly, looked up locally), country shapes by [Natural Earth](https://www.naturalearthdata.com)
+(public domain).
 
 Brand icons: [Simple Icons](https://simpleicons.org) (CC0), bundled with the
 card – the logos are trademarks of their owners. Fallback: Material Design Icons.
