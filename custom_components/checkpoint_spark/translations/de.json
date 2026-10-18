@@ -44,13 +44,15 @@
           "monitored_blades": "Überwachte Blades",
           "redact_diagnostics": "Netzwerkdaten in Diagnosen schwärzen",
           "syslog_enabled": "Syslog empfangen (Vorschau)",
-          "syslog_port": "Syslog-UDP-Port"
+          "syslog_port": "Syslog-UDP-Port",
+          "syslog_ignore_sources": "Quellen ignorieren (Syslog)"
         },
         "description": "Jeder Report-Typ wird in seinem eigenen Intervall abgerufen. Reports kosten Rechenzeit am Gateway – lange Zeiträume (Woche, Monat) besser im Stundenbereich.",
         "data_description": {
           "monitored_blades": "Der Sensor „Blade ausgefallen“ geht an, wenn eines dieser Blades nicht aktiv ist.",
           "redact_diagnostics": "Ersetzt IP- und MAC-Adressen und entfernt Gateway-Name und Host – dann lassen sich Diagnosen gefahrlos in einem öffentlichen Issue teilen.",
-          "syslog_enabled": "Empfängt die Log-Meldungen des Gateways (nur von dessen IP) und hält die letzten 200 im Speicher – zur Analyse des Log-Formats. Am Gateway den Log-Server auf diesen Home-Assistant-Host stellen."
+          "syslog_enabled": "Empfängt die Log-Meldungen des Gateways (nur von dessen IP) und hält die letzten 200 im Speicher – zur Analyse des Log-Formats. Am Gateway den Log-Server auf diesen Home-Assistant-Host stellen.",
+          "syslog_ignore_sources": "Kommagetrennte IPs, deren IPS-/Malware-Treffer keine Events auslösen – z. B. der eigene Schwachstellen-Scanner."
         }
       }
     },
@@ -298,6 +300,18 @@
       },
       "syslog_messages": {
         "name": "Syslog-Meldungen"
+      },
+      "ips_events_1h": {
+        "name": "IPS-Ereignisse (letzte Stunde)"
+      },
+      "firewall_drops_1h": {
+        "name": "Firewall-Drops (letzte Stunde)"
+      },
+      "scanned_hosts": {
+        "name": "Gescannte Hosts (24 h)"
+      },
+      "detected_threats": {
+        "name": "Erkannte Bedrohungen (24 h)"
       }
     },
     "binary_sensor": {

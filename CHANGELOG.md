@@ -4,14 +4,29 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.0] - 2026-10-18
 
 ### New
-- **Syslog receiver (preview)** – optional UDP listener (default port 5140) for
-  the gateway's log messages. Accepts the gateway IP only, keeps the last 200
-  messages in memory, sensor *Syslog messages*, action
-  `checkpoint_spark.syslog_messages`. Parsing into events follows once real
-  log samples are analysed.
+- **Real-time security logs via syslog** (optional). Point the gateway's syslog
+  server to Home Assistant (UDP, default port 5140) and enable *Receive syslog*
+  in the options. Only messages from the gateway's IP are accepted.
+  - **IPS attacks and malware detections now raise the event
+    `checkpoint_spark_threat` within seconds** – with attack name, severity,
+    CVE, source, destination and action (`source: syslog`). The same
+    attack from the same source is reported at most once per hour.
+  - New sensors: *IPS events (last hour)* with the last 20 detections,
+    *Firewall drops (last hour)* with top sources and services,
+    *Scanned hosts (24 h)* and *Detected threats (24 h)* from the anti-malware
+    status, and *Syslog messages* (counter).
+  - Option *Ignore sources*: IPs whose detections should not raise events,
+    e.g. your own vulnerability scanner.
+  - Action `checkpoint_spark.syslog_messages` returns the last raw messages
+    (also per product) – handy to analyse further log types.
+  - Messages are kept in memory only; nothing is written to disk.
+
+### Upgrade notes
+- Syslog is off by default. Port 5514 is often taken (UniFi Network) –
+  the default is 5140.
 
 ## [0.3.0] - 2026-10-18
 

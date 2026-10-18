@@ -26,6 +26,7 @@ CONF_REDACT_DIAGNOSTICS: Final = "redact_diagnostics"
 CONF_SYSLOG_ENABLED: Final = "syslog_enabled"
 CONF_SYSLOG_PORT: Final = "syslog_port"
 DEFAULT_SYSLOG_PORT: Final = 5140
+CONF_SYSLOG_IGNORE: Final = "syslog_ignore_sources"
 
 EVENT_THREAT: Final = f"{DOMAIN}_threat"
 # Same threat is reported at most once per this many hours

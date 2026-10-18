@@ -44,13 +44,15 @@
           "monitored_blades": "Monitored blades",
           "redact_diagnostics": "Redact network data in diagnostics",
           "syslog_enabled": "Receive syslog (preview)",
-          "syslog_port": "Syslog UDP port"
+          "syslog_port": "Syslog UDP port",
+          "syslog_ignore_sources": "Ignore sources (syslog)"
         },
         "description": "Each report type is fetched at its own interval. Generating reports costs CPU on the gateway – keep long periods (weekly, monthly) at hours.",
         "data_description": {
           "monitored_blades": "The 'Blade failure' sensor turns on when one of these blades is not enabled.",
           "redact_diagnostics": "Replaces IP and MAC addresses and removes gateway name and host, so diagnostics can be shared in a public issue.",
-          "syslog_enabled": "Listens for the gateway's log messages (only from its IP) and keeps the last 200 in memory – for analysing the log format. Configure the gateway to send syslog to this Home Assistant host."
+          "syslog_enabled": "Listens for the gateway's log messages (only from its IP) and keeps the last 200 in memory – for analysing the log format. Configure the gateway to send syslog to this Home Assistant host.",
+          "syslog_ignore_sources": "Comma-separated IPs whose IPS/malware detections do not raise events, e.g. your own vulnerability scanner."
         }
       }
     },
@@ -298,6 +300,18 @@
       },
       "syslog_messages": {
         "name": "Syslog messages"
+      },
+      "ips_events_1h": {
+        "name": "IPS events (last hour)"
+      },
+      "firewall_drops_1h": {
+        "name": "Firewall drops (last hour)"
+      },
+      "scanned_hosts": {
+        "name": "Scanned hosts (24 h)"
+      },
+      "detected_threats": {
+        "name": "Detected threats (24 h)"
       }
     },
     "binary_sensor": {

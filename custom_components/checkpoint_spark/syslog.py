@@ -18,6 +18,9 @@ from typing import Any
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.util import dt as dt_util
 
+from .const import EVENT_THREAT
+from .log_analysis import LogAnalyzer
+
 _LOGGER = logging.getLogger(__name__)
 
 BUFFER_SIZE = 200
@@ -28,7 +31,8 @@ PRODUCT_BUFFER_SIZE = 50
 # <PRI>, optional RFC 5424 version, then the rest
 _PRI = re.compile(r"^<(\d{1,3})>(\d\s)?")
 # key="value" or key=value (Check Point log export style); also key:"value"
-_KV = re.compile(r'([A-Za-z_][\w.-]*)(?:\s*=\s*("(?:[^"\\]|\\.)*"|[^\s;,\]]+)|:("(?:[^"\\]|\\.)*"))')
+# a value may be cut off (the gateway truncates long lines) -> unterminated quote at the end
+_KV = re.compile(r'([A-Za-z_][\w.-]*)(?:\s*=\s*("(?:[^"\\]|\\.)*(?:"|$)|[^\s;,\]]+)|:("(?:[^"\\]|\\.)*(?:"|$)))')
 
 
 def parse_message(raw: str) -> dict[str, Any]:
@@ -41,8 +45,9 @@ def parse_message(raw: str) -> dict[str, Any]:
     fields = {}
     for key, val, quoted in _KV.findall(raw):
         val = val or quoted
-        if val.startswith('"') and val.endswith('"'):
-            val = val[1:-1].replace('\\"', '"')
+        if val.startswith('"'):
+            val = val[1:-1] if val.endswith('"') and len(val) > 1 else val[1:]
+            val = val.replace('\\"', '"')
         fields[key] = val
     if fields:
         msg["fields"] = fields
@@ -65,8 +70,17 @@ class _Protocol(asyncio.DatagramProtocol):
 class SyslogReceiver:
     """UDP listener; accepts datagrams from the gateway address only."""
 
-    def __init__(self, hass: HomeAssistant, gateway_host: str, port: int) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        gateway_host: str,
+        port: int,
+        entry_id: str = "",
+        ignore_sources: set[str] | None = None,
+    ) -> None:
         self.hass = hass
+        self.entry_id = entry_id
+        self.analyzer = LogAnalyzer(ignore_sources)
         self.port = port
         self._gateway_host = gateway_host
         self._allowed: set[str] = set()
@@ -119,7 +133,12 @@ class SyslogReceiver:
         self.by_product.setdefault(product, deque(maxlen=PRODUCT_BUFFER_SIZE)).append(msg)
         self.product_counts[product] = self.product_counts.get(product, 0) + 1
         self.received += 1
-        self.last_received = dt_util.utcnow()
+        now = dt_util.utcnow()
+        self.last_received = now
+        for event in self.analyzer.add(msg, now):
+            event["entry_id"] = self.entry_id
+            _LOGGER.info("Syslog threat event: %s", event)
+            self.hass.bus.async_fire(EVENT_THREAT, event)
         self._notify()
 
     def _notify(self) -> None:

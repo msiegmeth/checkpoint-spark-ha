@@ -488,6 +488,67 @@ class SparkSyslogSensor(SparkEntity, SensorEntity):
         }
 
 
+class SparkLogSensor(SparkEntity, SensorEntity):
+    """Value derived from the syslog stream (rolling windows)."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _unrecorded_attributes = frozenset({"recent", "top_sources", "top_services"})
+
+    def __init__(self, coordinator: SparkCoordinator, key: str, icon: str) -> None:
+        super().__init__(coordinator, key)
+        self._attr_translation_key = key
+        self._attr_icon = icon
+        self._pending = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self.coordinator.syslog.async_add_listener(self._message))
+
+    def _message(self) -> None:
+        if self._pending is None:
+            self._pending = self.hass.loop.call_later(10, self._write)
+
+    def _write(self) -> None:
+        self._pending = None
+        self.async_write_ha_state()
+
+    @property
+    def _a(self):
+        return self.coordinator.syslog.analyzer
+
+    @property
+    def native_value(self) -> int | None:
+        now = dt_util.utcnow()
+        match self._attr_translation_key:
+            case "ips_events_1h":
+                return self._a.ips_count(now)
+            case "firewall_drops_1h":
+                return self._a.drop_count(now)
+            case "scanned_hosts":
+                return self._a.anti_malware.get("scan_hosts_day")
+            case "detected_threats":
+                return self._a.anti_malware.get("unique_detected_day")
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        now = dt_util.utcnow()
+        am = self._a.anti_malware
+        match self._attr_translation_key:
+            case "ips_events_1h":
+                return {"last_24h": self._a.ips_count(now, 24), "ignored": self._a.ignored,
+                        "recent": list(reversed(self._a.recent_ips))}
+            case "firewall_drops_1h":
+                return {"last_24h": self._a.drop_count(now, 24),
+                        "top_sources": self._a.drop_top(1), "top_services": self._a.drop_top(2)}
+            case "scanned_hosts":
+                return {"hour": am.get("scan_hosts_hour"), "week": am.get("scan_hosts_week")}
+            case "detected_threats":
+                return {"hour": am.get("unique_detected_hour"), "week": am.get("unique_detected_week"),
+                        "recent_malware": list(reversed(self._a.recent_malware))}
+        return {}
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: SparkConfigEntry,
@@ -511,4 +572,10 @@ async def async_setup_entry(
     )
     if coordinator.syslog:
         entities.append(SparkSyslogSensor(coordinator))
+        entities += [
+            SparkLogSensor(coordinator, "ips_events_1h", "mdi:shield-alert"),
+            SparkLogSensor(coordinator, "firewall_drops_1h", "mdi:wall-fire"),
+            SparkLogSensor(coordinator, "scanned_hosts", "mdi:radar"),
+            SparkLogSensor(coordinator, "detected_threats", "mdi:biohazard"),
+        ]
     async_add_entities(entities)
