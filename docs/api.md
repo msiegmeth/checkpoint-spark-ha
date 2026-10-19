@@ -12,7 +12,8 @@ Base URL: `https://<host>:4434/web-api/<command>`, always `POST` with
 | `logout` | none | – |
 
 Clish commands used (all read-only): `show diag`, `show memory-usage`,
-`show internet-connections`, `show vpn tunnels`, `show license` – plus whatever
+`show internet-connections`, `show vpn tunnels`, `show license`, `show software-version`,
+`show cloud-services-firmware-upgrade` – plus whatever
 `show …` command a user runs through the `show_command` action.
 Their raw output contains secrets (PPPoE password and hash, setup Wi-Fi
 password); `system.py` keeps whitelisted fields only.

@@ -384,6 +384,13 @@ SYSTEM_SENSORS: tuple[SparkSystemDescription, ...] = (
         icon="mdi:package-variant-closed",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: s.get("firmware"),
+        attrs_fn=lambda s: {
+            "version": s.get("firmware_version"),
+            "build": s.get("firmware_build"),
+            "model": s.get("model"),
+            "hw_version": s.get("hw_version"),
+            "auto_upgrade": s.get("firmware_auto_upgrade"),
+        },
         exists_fn=lambda s: "firmware" in s,
     ),
     SparkSystemDescription(

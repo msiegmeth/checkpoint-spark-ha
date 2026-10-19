@@ -16,6 +16,8 @@ SHOW_MEMORY = "show memory-usage"
 SHOW_INTERNET = "show internet-connections"
 SHOW_VPN = "show vpn tunnels"
 SHOW_LICENSE = "show license"
+SHOW_VERSION = "show software-version"
+SHOW_FW_UPGRADE = "show cloud-services-firmware-upgrade"
 
 _NUM = re.compile(r"-?\d+(?:\.\d+)?")
 
@@ -148,4 +150,32 @@ def parse_license(out: str, today: date) -> dict[str, Any]:
         "contracts": contracts,
         "next_contract_expiry": future[0].isoformat() if future else None,
         "expired_contracts": sorted(c["sku"] for c in contracts if c["expired"]),
+    }
+
+
+def parse_version(out: str) -> dict[str, Any]:
+    """"This is Check Point's 1570 Appliance R81.10.17 - Build 968"."""
+    m = re.search(r"(\S+) Appliance (R[\d.]+)\s*-\s*Build (\d+)", out)
+    if not m:
+        return {}
+    return {"model": m.group(1), "firmware_version": m.group(2), "firmware_build": m.group(3)}
+
+
+def parse_fw_upgrade(out: str) -> dict[str, Any]:
+    """Automatic firmware upgrade settings (cloud service); no "update available" flag exists."""
+    raw: dict[str, str] = {}
+    for line in out.splitlines():
+        if ":" in line:
+            key, val = line.split(":", 1)
+            raw[key.strip()] = val.strip()
+    if "activate" not in raw:
+        return {}
+    return {
+        "firmware_auto_upgrade": {
+            "enabled": raw.get("activate", "").lower() == "true",
+            "frequency": raw.get("frequency"),
+            "time": raw.get("time"),
+            "day_of_week": raw.get("day-of-week"),
+            "day_of_month": raw.get("day-of-month"),
+        }
     }

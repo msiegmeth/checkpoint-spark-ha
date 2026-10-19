@@ -4,6 +4,25 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.0] - 2026-10-19
+
+### New
+- **Firmware details:** the firmware sensor now also shows the readable
+  version (e.g. R81.10.17, build 968), the appliance model and the automatic
+  firmware upgrade settings (on/off, how often, at what time).
+  Note: the gateway offers no read-only way to ask whether a *new* firmware is
+  available – the card therefore shows whether automatic upgrades are on.
+
+### Changed
+- **Card, System tab – more compact:** tiles at the top for Features
+  (“10/12 active”), Firmware, Licenses, Hardware (eMMC wear, model), Internet
+  and VPN. Features, Licenses and VPN open a small popup with the details.
+- The temperature chart moved to the bottom, the memory chart legend shows
+  “used of total” (e.g. 86 % (1,724 of 2,006 MB)).
+
+### Update notes
+- Restart Home Assistant after the update so the firmware details are read.
+
 ## [0.8.3] - 2026-10-19
 
 ### Changed

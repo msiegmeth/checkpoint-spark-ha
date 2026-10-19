@@ -53,6 +53,8 @@ _SHOW_COMMANDS = {
     sysinfo.SHOW_INTERNET: (lambda out, today: sysinfo.parse_internet(out), timedelta(0)),
     sysinfo.SHOW_VPN: (lambda out, today: sysinfo.parse_vpn(out), timedelta(0)),
     sysinfo.SHOW_LICENSE: (sysinfo.parse_license, timedelta(hours=6)),
+    sysinfo.SHOW_VERSION: (lambda out, today: sysinfo.parse_version(out), timedelta(hours=6)),
+    sysinfo.SHOW_FW_UPGRADE: (lambda out, today: sysinfo.parse_fw_upgrade(out), timedelta(hours=6)),
 }
 
 

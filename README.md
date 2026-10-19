@@ -122,7 +122,7 @@ contains (e.g. the hourly report has no IPS or high-risk figures).
 | CPU temperature / DDR temperature | °C | `internal` (CPU) |
 | Memory used | MB | – |
 | eMMC wear (diagnostic) | % | worst chip, upper bound of the reported range |
-| Firmware (diagnostic) | – | current image name |
+| Firmware (diagnostic) | – | current image name; attributes: version, build, model, HW version, automatic firmware upgrade settings (the gateway offers no read-only “update available” flag) |
 | Internet (binary, connectivity) | – | `name`, `type`, `interface`, `link_status` |
 | Internet connected since (timestamp) | – | same as above |
 | Public IPv4 (diagnostic) | – | – |

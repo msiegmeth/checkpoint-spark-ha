@@ -91,3 +91,21 @@ def test_license() -> None:
 
 def test_memory() -> None:
     assert system.parse_memory("Memory usage is: 1464 MB\n") == {"memory_used_mb": 1464.0}
+
+
+def test_parse_version():
+    from custom_components.checkpoint_spark.system import parse_version
+
+    out = "This is Check Point's 1570 Appliance R81.10.17 - Build 968\n"
+    assert parse_version(out) == {"model": "1570", "firmware_version": "R81.10.17", "firmware_build": "968"}
+    assert parse_version("Bad parameter") == {}
+
+
+def test_parse_fw_upgrade():
+    from custom_components.checkpoint_spark.system import parse_fw_upgrade
+
+    out = "activate:                     true\nfrequency:                    daily\ntime:                         01:00\n" \
+          "day-of-week:                  sunday\nday-of-month:                 1\n"
+    assert parse_fw_upgrade(out)["firmware_auto_upgrade"] == {
+        "enabled": True, "frequency": "daily", "time": "01:00", "day_of_week": "sunday", "day_of_month": "1"}
+    assert parse_fw_upgrade("") == {}

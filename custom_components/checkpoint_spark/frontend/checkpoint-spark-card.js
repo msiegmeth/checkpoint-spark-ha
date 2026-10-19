@@ -12,7 +12,7 @@
  *   resolvers: [192.168.1.53]      # optional: own DNS resolvers (marked in host lists)
  *   names: {192.168.1.10: NAS}     # optional: names for IPs without a device tracker
  */
-const VERSION = "0.8.3";
+const VERSION = "0.9.0";
 const DOMAIN = "checkpoint_spark";
 
 const T = {
@@ -32,7 +32,9 @@ const T = {
     online: "online", offline: "offline", noInfection: "no active infection", threat: "threat active", blades: "blades",
     bladeOff: "blade off", hwOk: "hardware OK", hwProblem: "hardware problem", internet: "Internet", since: "since",
     vpn: "VPN tunnels up", cpu: "CPU / DDR", mem: "Memory", emmc: "eMMC wear", contracts: "Contracts until",
-    firmware: "Firmware", expired: "expired", report: "Report", noDevice: "No Check Point Quantum Spark device found.",
+    firmware: "Firmware", expired: "expired", report: "Report", features: "Features", active: "active", licenses: "Licenses",
+    hardware: "Hardware", autoUpd: "Auto-update", off: "off", freq_daily: "daily", freq_weekly: "weekly", freq_monthly: "monthly",
+    hwOk: "OK", hwProblem: "Problem", of: "of", close: "Close", allValid: "all valid", noDevice: "No Check Point Quantum Spark device found.",
     blockedA: "blocked", detectedA: "detected", allowedA: "allowed", other: "Other", noData: "no data",
     infHosts: "infected hosts", newInf: "newly infected", critInf: "critically infected", servers: "infected servers",
     noReport: "not in this report", severity: "Severity", times: "×", targets: "targets", occurrences: "Occurrences",
@@ -67,7 +69,9 @@ const T = {
     online: "online", offline: "offline", noInfection: "keine aktive Infektion", threat: "Bedrohung aktiv", blades: "Blades",
     bladeOff: "Blade aus", hwOk: "Hardware OK", hwProblem: "Hardware-Problem", internet: "Internet", since: "seit",
     vpn: "VPN-Tunnel aktiv", cpu: "CPU / DDR", mem: "Arbeitsspeicher", emmc: "eMMC-Verschleiß", contracts: "Verträge bis",
-    firmware: "Firmware", expired: "abgelaufen", report: "Report", noDevice: "Kein Check-Point-Quantum-Spark-Gerät gefunden.",
+    firmware: "Firmware", expired: "abgelaufen", report: "Report", features: "Features", active: "aktiv", licenses: "Lizenzen",
+    hardware: "Hardware", autoUpd: "Auto-Update", off: "aus", freq_daily: "täglich", freq_weekly: "wöchentlich", freq_monthly: "monatlich",
+    hwOk: "OK", hwProblem: "Problem", of: "von", close: "Schließen", allValid: "alle gültig", noDevice: "Kein Check-Point-Quantum-Spark-Gerät gefunden.",
     blockedA: "blockiert", detectedA: "erkannt", allowedA: "durchgelassen", other: "Weitere", noData: "keine Daten",
     infHosts: "infizierte Hosts", newInf: "neu infiziert", critInf: "kritisch infiziert", servers: "infizierte Server",
     noReport: "nicht in diesem Report", severity: "Schwere", times: "×", targets: "Ziele", occurrences: "Vorkommen",
@@ -367,6 +371,7 @@ class CheckpointSparkCard extends HTMLElement {
         <div class="tabs">${[["traffic", t.traffic, "mdi:swap-vertical-bold"], ["tp", t.tp, "mdi:shield-alert"], ["map", t.map, "mdi:earth"], ["system", t.system, "mdi:chip"]]
           .map(([k, l, i]) => `<button role="tab" aria-selected="${st.tab === k}" class="tab ${st.tab === k ? "on" : ""}" data-tab="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`).join("")}</div>
         <div class="body">${body}</div>
+        ${this._popup()}
       </ha-card>`;
     this._bind();
   }
@@ -382,6 +387,10 @@ class CheckpointSparkCard extends HTMLElement {
     on("[data-dir]", (el) => { st.dir = el.dataset.dir; st.open.clear(); this._render(); });
     on("[data-sev]", (el) => { st.sev = el.dataset.sev; st.open.clear(); this._render(); });
     on("[data-mapdir]", (el) => { st.mapDir = el.dataset.mapdir; this._render(); });
+    on("[data-pop]", (el) => { st.pop = el.dataset.pop; this._render(); });
+    root.querySelectorAll(".pop-bg").forEach((el) => el.addEventListener("click", (e) => {
+      if (e.target === el) { st.pop = ""; this._render(); }
+    }));
     on("[data-ev]", (el) => {
       const k = el.dataset.ev;
       st.open.has(k) ? st.open.delete(k) : st.open.add(k);
@@ -792,7 +801,7 @@ class CheckpointSparkCard extends HTMLElement {
     }
     const legend = pts.map((p) => {
       const last = p.rows[p.rows.length - 1];
-      return this._pill(`${p.label}${last ? ` ${this._num(last.mean, digits)} ${unit}` : ""}`, p.color);
+      return this._pill(`${p.label}${last ? ` ${this._num(last.mean, digits)} ${unit}` : ""}${p.note || ""}`, p.color);
     }).join(" ");
     return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="chart">${svg}</svg><div class="legend">${legend}</div>`;
   }
@@ -871,28 +880,65 @@ class CheckpointSparkCard extends HTMLElement {
   _system() {
     const t = this._t;
     const blades = this._a("active_blades", "blades") || {};
+    const nOn = Object.values(blades).filter(Boolean).length, nAll = Object.keys(blades).length;
+    const fw = this._s("firmware"), fa = fw?.attributes || {}, au = fa.auto_upgrade;
+    const exp = this._s("next_contract_expiry"), expired = exp?.attributes?.expired_contracts || [];
+    const hw = this._s("hardware_problem"), emmc = this._v("emmc_wear");
     const inet = this._s("internet_connected_since");
-    const cpu = this._v("cpu_temperature"), ddr = this._v("ddr_temperature");
-    const exp = this._s("next_contract_expiry");
-    const kv = (k, v) => `<div class="kv"><span>${esc(k)}</span><b>${v}</b></div>`;
-    const expired = exp?.attributes?.expired_contracts || [];
-    return `<div class="blades">${Object.entries(blades).map(([k, on]) => `<span class="${on ? "" : "off"}"><ha-icon icon="${on ? "mdi:check-circle" : "mdi:minus-circle-outline"}"></ha-icon>${esc(BLADE[k] || k)}</span>`).join("")}</div>` +
-      kv(t.internet, inet && !isNaN(new Date(inet.state)) ? `${esc(t.since)} ${esc(this._time(inet.state))}` : "–") +
-      `<details class="kvd"><summary>${kv(t.vpn, this._num(this._v("vpn_tunnels_up")) + ` <span class="muted">/ ${(this._a("vpn_tunnels_up", "tunnels") || []).length} ▸</span>`)}</summary>
-        ${this._table([t.name, ""], (this._a("vpn_tunnels_up", "tunnels") || []).map((x) => `<tr><td class="n">${esc(x.name)} <span class="muted small">${esc(x.type || "")}</span></td><td class="r">${this._pill(x.state, x.state === "up" ? C.green : C.red)}</td></tr>`))}</details>` +
-      kv(t.cpu, `${cpu == null ? "–" : Math.round(cpu) + " °C"} / ${ddr == null ? "–" : Math.round(ddr) + " °C"}`) +
-      kv(t.mem, this._v("memory_used") == null ? "–" : `${this._num(this._v("memory_used"))} MB`) +
-      kv(t.emmc, this._v("emmc_wear") == null ? "–" : `≤ ${this._num(this._v("emmc_wear"))} %`) +
-      `<details class="kvd"><summary>${kv(t.contracts, exp && !isNaN(new Date(exp.state)) ? `${esc(new Date(exp.state).toLocaleDateString(this._loc))}${expired.length ? ` <span class="muted">· ${expired.length} ${esc(t.expired)}</span>` : ""} <span class="muted">▸</span>` : "–")}</summary>
-        ${this._table([t.sku, t.expires], (exp?.attributes?.contracts || []).slice().sort((a, b) => a.expires.localeCompare(b.expires)).map((c) =>
-          `<tr><td class="n">${esc(c.sku)}</td><td class="r">${c.expired ? this._pill(new Date(c.expires).toLocaleDateString(this._loc), C.red) : esc(new Date(c.expires).toLocaleDateString(this._loc))}</td></tr>`))}</details>` +
-      kv(t.firmware, esc(this._s("firmware")?.state || "–")) +
-      kv(t.report, esc(this._time(this._s(this._pk("report_time"))?.state))) +
-      this._perf() +
+    const tunnels = this._a("vpn_tunnels_up", "tunnels") || [];
+    const date = (iso) => new Date(iso).toLocaleDateString(this._loc);
+    const tile = (label, value, sub, color, pop) =>
+      `<${pop ? `button class="sum tbtn" data-pop="${pop}"` : `div class="sum"`}>
+        <div class="v" style="color:${color};font-size:17px">${value}</div><div class="l">${esc(label)}${pop ? " ›" : ""}</div>
+        ${sub ? `<div class="s">${sub}</div>` : ""}</${pop ? "button" : "div"}>`;
+    const auText = au ? (au.enabled ? `${esc(t.autoUpd)}: ${esc(t["freq_" + au.frequency] || au.frequency || "")} ${esc(au.time || "")}` : `${esc(t.autoUpd)}: ${esc(t.off)}`) : "";
+    const tiles = [
+      nAll ? tile(t.features, `${nOn}/${nAll}`, esc(t.active), nOn === nAll ? C.green : C.amber, "blades") : "",
+      fw ? tile(t.firmware, esc(fa.version || fw.state), `${fa.build ? `Build ${esc(fa.build)}` : ""}${fa.build && auText ? " · " : ""}${au && !au.enabled ? `<span style="color:${C.amber}">${auText}</span>` : auText}`, "var(--primary-text-color)") : "",
+      exp ? tile(t.licenses, exp && !isNaN(new Date(exp.state)) ? esc(date(exp.state)) : "–",
+        expired.length ? `<span style="color:${C.red}">${expired.length} ${esc(t.expired)}</span>` : esc(t.allValid), expired.length ? C.amber : C.green, "contracts") : "",
+      hw || emmc != null ? tile(t.hardware, hw ? esc(hw.state === "on" ? t.hwProblem : t.hwOk) : "–",
+        [emmc != null ? `eMMC ≤ ${this._num(emmc)} %` : "", fa.model ? esc(fa.model) : "", fa.hw_version ? `HW ${esc(fa.hw_version)}` : ""].filter(Boolean).join(" · "),
+        hw?.state === "on" ? C.red : C.green, hw?.state === "on" ? "hardware" : "") : "",
+      inet ? tile(t.internet, !isNaN(new Date(inet.state)) ? esc(this._time(inet.state)) : "–", esc(t.since), "var(--primary-text-color)") : "",
+      this._s("vpn_tunnels_up") ? tile("VPN", `${this._num(this._v("vpn_tunnels_up"))}/${tunnels.length}`, esc(t.active), "var(--primary-text-color)", tunnels.length ? "vpn" : "") : "",
+    ].join("");
+    return `<div class="sums">${tiles}</div>` + this._perf() +
       `<h4>${esc(t.temps)}</h4>` + this._lineChart([
         { id: this._map.cpu_temperature, label: "CPU", color: "#fb8c00" },
         { id: this._map.ddr_temperature, label: "DDR", color: "#ffca28" }], "°C") +
-      (this._map.memory_load ? "" : `<h4>${esc(t.ram)}</h4>` + this._lineChart([{ id: this._map.memory_used, label: "RAM", color: "#ab47bc" }], "MB"));
+      (this._map.memory_load ? "" : `<h4>${esc(t.ram)}</h4>` + this._lineChart([{ id: this._map.memory_used, label: "RAM", color: "#ab47bc" }], "MB")) +
+      `<div class="muted small pad">${esc(t.report)}: ${esc(this._time(this._s(this._pk("report_time"))?.state))}</div>`;
+  }
+
+  _ramNote() {
+    const a = this._s("memory_load")?.attributes || {};
+    return a.used_mb && a.total_mb ? ` (${this._num(a.used_mb)} ${this._t.of} ${this._num(a.total_mb)} MB)` : "";
+  }
+
+  /** Detail popup of the system tiles. */
+  _popup() {
+    const t = this._t, k = this._st.pop;
+    if (!k || this._st.tab !== "system") return "";
+    let title = "", body = "";
+    if (k === "blades") {
+      const blades = this._a("active_blades", "blades") || {};
+      title = t.features;
+      body = `<div class="blades">${Object.entries(blades).sort((a, b) => b[1] - a[1]).map(([b, on]) => `<span class="${on ? "" : "off"}"><ha-icon icon="${on ? "mdi:check-circle" : "mdi:minus-circle-outline"}"></ha-icon>${esc(BLADE[b] || b)}</span>`).join("")}</div>`;
+    } else if (k === "contracts") {
+      title = t.licenses;
+      body = this._table([t.sku, t.expires], (this._a("next_contract_expiry", "contracts") || []).slice().sort((a, b) => a.expires.localeCompare(b.expires)).map((c) =>
+        `<tr><td class="n">${esc(c.sku)}</td><td class="r">${c.expired ? this._pill(new Date(c.expires).toLocaleDateString(this._loc), C.red) : esc(new Date(c.expires).toLocaleDateString(this._loc))}</td></tr>`));
+    } else if (k === "vpn") {
+      title = "VPN";
+      body = this._table([t.name, ""], (this._a("vpn_tunnels_up", "tunnels") || []).map((x) => `<tr><td class="n">${esc(x.name)} <span class="muted small">${esc(x.type || "")}</span></td><td class="r">${this._pill(x.state, x.state === "up" ? C.green : C.red)}</td></tr>`));
+    } else if (k === "hardware") {
+      title = t.hardware;
+      body = (this._a("hardware_problem", "problems") || []).map((p) => `<div>${this._pill(p, C.red, "mdi:alert")}</div>`).join("");
+    }
+    return `<div class="pop-bg"><div class="pop" role="dialog" aria-label="${esc(title)}">
+      <div class="pop-h"><b>${esc(title)}</b><button class="pop-x" data-pop="" aria-label="${esc(t.close)}"><ha-icon icon="mdi:close"></ha-icon></button></div>
+      ${body}</div></div>`;
   }
 
   /** Load section from OpenTelemetry sensors (CPU, memory, WAN throughput, line quality). */
@@ -912,7 +958,7 @@ class CheckpointSparkCard extends HTMLElement {
       `<div class="sum"><div class="v" style="color:${c};font-size:17px">${val}</div><div class="l">${esc(l)}</div></div>`).join("")}</div>
       <h4>${esc(t.cpuLoad)} / ${esc(t.ram)}</h4>` + this._lineChart([
         { id: this._map.cpu_load, label: "CPU", color: "#ef5350" },
-        { id: this._map.memory_load, label: "RAM", color: "#ab47bc" }], "%") +
+        { id: this._map.memory_load, label: "RAM", color: "#ab47bc", note: this._ramNote() }], "%") +
       `<h4>${esc(t.wan)}</h4>` + this._lineChart([
         { id: this._map.wan_download, label: "↓", color: "#42a5f5" },
         { id: this._map.wan_upload, label: "↑", color: "#26a69a" }], "Mbit/s", 1) +
@@ -974,6 +1020,15 @@ const CSS = `
   .sum { padding: 8px 10px; border-radius: 12px; background: var(--secondary-background-color, rgba(127,127,127,.08)); min-width: 0; }
   .sum .v { font-size: 20px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
   .sum .l { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--secondary-text-color); }
+  button.sum { font: inherit; text-align: left; color: inherit; cursor: pointer;
+                border: 1px solid color-mix(in srgb, var(--primary-color) 35%, transparent); }
+  button.sum:hover { background: color-mix(in srgb, var(--primary-color) 12%, var(--secondary-background-color, transparent)); }
+  .pop-bg { position: fixed; inset: 0; z-index: 10; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .pop { background: var(--card-background-color, #1c1c1c); border-radius: 16px; padding: 12px 16px 16px; width: min(460px, 100%);
+         max-height: 80vh; overflow: auto; box-shadow: 0 8px 32px rgba(0,0,0,.4); border: 1px solid var(--divider-color); }
+  .pop-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 16px; }
+  .pop-x { background: none; border: none; cursor: pointer; color: var(--secondary-text-color); padding: 4px; border-radius: 50%; }
+  .pop-x:hover { background: var(--secondary-background-color); }
   .sum .s { font-size: 11px; color: var(--secondary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* folder tabs: the active tab and the content share one frame */
   .tabs { --tb: color-mix(in srgb, var(--primary-color) 45%, transparent);
