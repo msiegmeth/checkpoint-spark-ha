@@ -12,7 +12,7 @@
  *   resolvers: [192.168.1.53]      # optional: own DNS resolvers (marked in host lists)
  *   names: {192.168.1.10: NAS}     # optional: names for IPs without a device tracker
  */
-const VERSION = "0.6.0";
+const VERSION = "0.8.2";
 const DOMAIN = "checkpoint_spark";
 
 const T = {
@@ -361,10 +361,11 @@ class CheckpointSparkCard extends HTMLElement {
           <div class="title"><ha-icon icon="mdi:shield-half-full"></ha-icon><span>${esc(title)}</span></div>
           <div class="chips">${this._chips()}</div>
         </div>
-        <div class="seg">${PERIODS.map((p) => `<button class="${st.period === p ? "on" : ""}" data-period="${p}">${esc(t["p_" + p])}</button>`).join("")}</div>
+        <div class="periodbar"><ha-icon icon="mdi:calendar-range"></ha-icon>
+          <div class="seg main" role="radiogroup">${PERIODS.map((p) => `<button role="radio" aria-checked="${st.period === p}" class="${st.period === p ? "on" : ""}" data-period="${p}">${esc(t["p_" + p])}</button>`).join("")}</div></div>
         ${this._summary()}
         <div class="tabs">${[["traffic", t.traffic, "mdi:swap-vertical-bold"], ["tp", t.tp, "mdi:shield-alert"], ["map", t.map, "mdi:earth"], ["system", t.system, "mdi:chip"]]
-          .map(([k, l, i]) => `<button class="tab ${st.tab === k ? "on" : ""}" data-tab="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`).join("")}</div>
+          .map(([k, l, i]) => `<button role="tab" aria-selected="${st.tab === k}" class="tab ${st.tab === k ? "on" : ""}" data-tab="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`).join("")}</div>
         <div class="body">${body}</div>
       </ha-card>`;
     this._bind();
@@ -448,8 +449,8 @@ class CheckpointSparkCard extends HTMLElement {
     return `<h4>${esc(t.history)}</h4>${this._barChart()}
       <h4>${esc(t.flow)}: ↓/↑ → ${esc(t.categories)}</h4>${this._trafficSankey()}
       <div class="row">
-        <div class="seg sm">${[["apps", t.apps], ["sites", t.sites], ["categories", t.categories]].map(([k, l]) => `<button class="${st.list === k ? "on" : ""}" data-list="${k}">${esc(l)}</button>`).join("")}</div>
-        <div class="seg sm">${[["volume", t.byVolume], ["sessions", t.bySessions]].map(([k, l]) => `<button class="${st.metric === k ? "on" : ""}" data-metric="${k}">${esc(l)}</button>`).join("")}</div>
+        <div class="chips-row">${[["apps", t.apps, "mdi:application-outline"], ["sites", t.sites, "mdi:web"], ["categories", t.categories, "mdi:shape-outline"]].map(([k, l, i]) => `<button class="${st.list === k ? "on" : ""}" data-list="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`).join("")}</div>
+        <div class="chips-row">${[["volume", t.byVolume, "mdi:database-outline"], ["sessions", t.bySessions, "mdi:lan-connect"]].map(([k, l, i]) => `<button class="${st.metric === k ? "on" : ""}" data-metric="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`).join("")}</div>
       </div>
       ${this._table(["", t.name, st.metric === "volume" ? t.volume : t.sessions, ""], rows)}
       ${risky ? `<h4>${esc(t.highRisk)}</h4>` + this._table(["", t.name, t.sessions, ""], risky.map((r) => `<tr><td class="ic">${iconHtml(r.name + " " + (r.category || ""), "apps")}</td><td class="n">${esc(r.name)}${r.category ? ` <span class="muted small">${esc(r.category)}</span>` : ""}</td><td class="r">${this._num(r.sessions)}</td><td class="r">${this._sev(r.risk)}</td></tr>`)) : ""}`;
@@ -570,15 +571,15 @@ class CheckpointSparkCard extends HTMLElement {
       const badge = n === 0 && r ? `<span class="cnt" title="${esc(t.reportOnly)}">Σ ${this._num(r)}</span>` : `<span class="cnt">${n}</span>`;
       return `<button class="${st.type === k ? "on" : ""}" data-type="${k}" style="--c:${color}">${esc(label)}${badge}</button>`;
     };
-    const dirBtn = (k, label) => `<button class="${st.dir === k ? "on" : ""}" data-dir="${k}" style="--c:${DIR_COLOR[k] || C.grey}">${DIR_ICON[k] ? `<ha-icon icon="${DIR_ICON[k]}"></ha-icon>` : ""}${esc(label)}<span class="cnt">${k === "all" ? count("dir", () => true) : count("dir", (h) => (h.direction || "unknown") === k)}</span></button>`;
-    const sevBtn = (k, label) => `<button class="${st.sev === k ? "on" : ""}" data-sev="${k}" style="--c:${SEV_COLOR[k] || C.grey}">${esc(label)}<span class="cnt">${k === "all" ? count("sev", () => true) : count("sev", (h) => sevKey(h) === k)}</span></button>`;
+    const dirBtn = (k, label) => `<button class="${st.dir === k ? "on" : ""}" data-dir="${k}" style="--c:${DIR_COLOR[k] || "var(--primary-color)"}">${DIR_ICON[k] ? `<ha-icon icon="${DIR_ICON[k]}"></ha-icon>` : ""}${esc(label)}<span class="cnt">${k === "all" ? count("dir", () => true) : count("dir", (h) => (h.direction || "unknown") === k)}</span></button>`;
+    const sevBtn = (k, label) => `<button class="${st.sev === k ? "on" : ""}" data-sev="${k}" style="--c:${SEV_COLOR[k] || "var(--primary-color)"}">${esc(label)}<span class="cnt">${k === "all" ? count("sev", () => true) : count("sev", (h) => sevKey(h) === k)}</span></button>`;
     const sevTxt = SEV_TXT[this._lang];
     const filters = `<div class="filters">
-      <span class="fl">${esc(t.type)}</span><div class="seg sm chips-seg">
-        ${typeBtn("all", t.all, C.grey)}${typeBtn("ips", t.ips, TYPE_COLOR.ips)}${typeBtn("malware", t.blocked, TYPE_COLOR.malware)}${typeBtn("bot", t.bots, TYPE_COLOR.bot)}</div>
-      <span class="fl">${esc(t.dir)}</span><div class="seg sm chips-seg">
+      <span class="fl">${esc(t.type)}</span><div class="chips-row">
+        ${typeBtn("all", t.all, "var(--primary-color)")}${typeBtn("ips", t.ips, TYPE_COLOR.ips)}${typeBtn("malware", t.blocked, TYPE_COLOR.malware)}${typeBtn("bot", t.bots, TYPE_COLOR.bot)}</div>
+      <span class="fl">${esc(t.dir)}</span><div class="chips-row">
         ${dirBtn("all", t.all)}${["inbound", "internal", "outbound"].map((d) => dirBtn(d, t[d])).join("")}</div>
-      <span class="fl">${esc(t.severity)}</span><div class="seg sm chips-seg">
+      <span class="fl">${esc(t.severity)}</span><div class="chips-row">
         ${sevBtn("all", t.all)}${["critical", "high", "medium", "low"].map((k) => sevBtn(k, sevTxt[k])).join("")}</div>
     </div>`;
     const noType = (st.type === "malware" || st.type === "bot") && count("type", (h) => evType(h) === st.type) === 0;
@@ -801,8 +802,8 @@ class CheckpointSparkCard extends HTMLElement {
     const t = this._t, st = this._st;
     if (!GEO) return `<div class="muted pad">${esc(t.mapLoading)}</div>`;
     const tm = this._s("threat_map");
-    const seg = `<div class="seg sm">${[["in", t.inbound_m, "mdi:arrow-down-bold"], ["out", t.outbound_m, "mdi:arrow-up-bold"]].map(([k, l, i]) =>
-      `<button class="${st.mapDir === k ? "on" : ""}" data-mapdir="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`).join("")}</div>`;
+    const seg = `<div class="chips-row">${[["in", t.inbound_m, "mdi:arrow-down-bold", "#ef5350"], ["out", t.outbound_m, "mdi:arrow-up-bold", "#43a047"]].map(([k, l, i, c]) =>
+      `<button class="${st.mapDir === k ? "on" : ""}" style="--c:${c}" data-mapdir="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`).join("")}</div>`;
     if (!tm || !tm.attributes.inbound) return seg + `<div class="hint">${esc(t.noGeo)}</div>`;
     const a = tm.attributes, inbound = st.mapDir === "in";
     const pk = { hourly: "1d", daily: "1d", weekly: "7d", monthly: "30d" }[st.period];
@@ -947,27 +948,45 @@ const CSS = `
   .pill { display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px; border-radius: 10px; font-size: 11px; line-height: 18px;
           color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); white-space: nowrap; }
   .pill ha-icon { --mdc-icon-size: 12px; }
-  .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--secondary-background-color, rgba(127,127,127,.1)); margin: 10px 0 4px; flex-wrap: wrap; }
-  .seg button { border: none; background: none; padding: 5px 12px; border-radius: 8px; cursor: pointer; color: var(--secondary-text-color);
-                font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
-  .seg button.on { background: var(--card-background-color, var(--ha-card-background, #fff)); color: var(--primary-text-color); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
-  .seg.sm { margin: 4px 0; } .seg.sm button { padding: 3px 9px; font-size: 12px; }
-  .seg button ha-icon { --mdc-icon-size: 14px; }
-  .chips-seg button.on { color: var(--c, var(--primary-text-color)); }
-  .cnt { font-size: 10px; padding: 0 5px; border-radius: 8px; background: rgba(127,127,127,.18); margin-left: 2px; }
+  /* --- controls: clearly recognisable as selectable --- */
+  button { font: inherit; }
+  button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+  .periodbar { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; }
+  .periodbar > ha-icon { color: var(--secondary-text-color); --mdc-icon-size: 20px; }
+  .seg { display: inline-flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--divider-color); border-radius: 10px; overflow: hidden; }
+  .seg button { border: none; border-left: 1px solid var(--divider-color); background: none; padding: 6px 14px; cursor: pointer;
+                color: var(--primary-text-color); font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+  .seg button:first-child { border-left: none; }
+  .seg button:hover:not(.on) { background: color-mix(in srgb, var(--primary-color) 10%, transparent); }
+  .seg button.on { background: var(--primary-color); color: var(--text-primary-color, #fff); font-weight: 600; }
+  .chips-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+  .chips-row button { --c: var(--primary-color); display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 16px;
+                      cursor: pointer; font-size: 12px; color: var(--primary-text-color); background: transparent;
+                      border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); transition: background .15s, color .15s; }
+  .chips-row button:hover:not(.on) { background: color-mix(in srgb, var(--c) 14%, transparent); }
+  .chips-row button.on { background: var(--c); border-color: var(--c); color: #fff; font-weight: 600; }
+  .chips-row button.on::before { content: "✓"; font-weight: 700; }
+  .chips-row button ha-icon { --mdc-icon-size: 15px; }
+  .chips-row button.on ha-icon { color: #fff; }
+  .cnt { font-size: 10px; padding: 0 6px; border-radius: 8px; background: color-mix(in srgb, var(--c, #888) 18%, transparent); margin-left: 2px; }
+  .chips-row button.on .cnt { background: rgba(255,255,255,.28); }
   .sums { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin: 8px 0 6px; }
   .sum { padding: 8px 10px; border-radius: 12px; background: var(--secondary-background-color, rgba(127,127,127,.08)); min-width: 0; }
   .sum .v { font-size: 20px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
   .sum .l { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--secondary-text-color); }
   .sum .s { font-size: 11px; color: var(--secondary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--divider-color); margin-top: 6px; }
-  .tab { background: none; border: none; padding: 8px 12px; cursor: pointer; color: var(--secondary-text-color); font: inherit; font-size: 14px;
-         border-bottom: 2px solid transparent; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
-  .tab ha-icon { --mdc-icon-size: 18px; }
-  .tab.on { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+  .tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--divider-color); margin-top: 10px; }
+  .tab { background: none; border: none; padding: 10px 14px; cursor: pointer; color: var(--primary-text-color); opacity: .75;
+         font-size: 15px; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; white-space: nowrap;
+         display: inline-flex; align-items: center; gap: 7px; transition: background .15s, opacity .15s; }
+  .tab ha-icon { --mdc-icon-size: 20px; }
+  .tab:hover:not(.on) { opacity: 1; background: color-mix(in srgb, var(--primary-color) 8%, transparent); }
+  .tab.on { opacity: 1; color: var(--primary-color); font-weight: 600; border-bottom-color: var(--primary-color);
+            background: color-mix(in srgb, var(--primary-color) 10%, transparent); }
   .body { padding: 4px 0; }
   .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin-top: 8px; }
-  .filters { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 10px; margin: 8px 0; }
+  .filters { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 12px; margin: 10px 0;
+             padding: 10px 12px; border-radius: 12px; background: var(--secondary-background-color, rgba(127,127,127,.06)); }
   .fl { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--secondary-text-color); }
   h4 { margin: 14px 0 4px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; color: var(--secondary-text-color); }
   h4.sep { margin-top: 20px; padding-top: 10px; border-top: 1px dashed var(--divider-color); }

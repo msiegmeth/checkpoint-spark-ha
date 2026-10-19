@@ -4,6 +4,17 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.2] - 2026-10-19
+
+### Changed
+- **Card: controls are easier to recognise.** The period selector
+  (1 h / 24 h / 7 d / 30 d) is a framed button bar with a calendar icon, the
+  selected period is filled in the accent colour. Tabs are larger, the active
+  tab is bold, tinted and underlined. Filters (type, direction, severity),
+  Apps/Sites/Categories, Volume/Sessions and Inbound/Outbound on the map are
+  framed chips with icons – selected chips are filled in their colour with a
+  check mark. Hover and keyboard focus are visible.
+
 ## [0.8.1] - 2026-10-18
 
 ### Fixed
