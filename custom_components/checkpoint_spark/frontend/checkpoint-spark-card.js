@@ -12,7 +12,7 @@
  *   resolvers: [192.168.1.53]      # optional: own DNS resolvers (marked in host lists)
  *   names: {192.168.1.10: NAS}     # optional: names for IPs without a device tracker
  */
-const VERSION = "0.9.2";
+const VERSION = "0.9.3";
 const DOMAIN = "checkpoint_spark";
 
 const T = {
@@ -1047,8 +1047,8 @@ const CSS = `
   .pop-x:hover { background: var(--secondary-background-color); }
   .sum .s { font-size: 11px; color: var(--secondary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* folder tabs: the active tab and the content share one frame; concave corners make a smooth transition */
-  .tabs { --tb: color-mix(in srgb, var(--primary-color) 45%, transparent);
-          --tbg: color-mix(in srgb, var(--primary-color) 7%, var(--card-background-color, #1c1c1c));
+  .tabs { --tb: color-mix(in srgb, var(--primary-color) 45%, var(--ha-card-background, var(--card-background-color, #1c1c1c)));
+          --tbg: color-mix(in srgb, var(--primary-color) 7%, var(--ha-card-background, var(--card-background-color, #1c1c1c)));
           display: flex; gap: 4px; padding: 0; margin-top: 12px; position: relative; z-index: 1; margin-bottom: -1px; }
   .tab { position: relative; background: none; border: 1px solid transparent; border-bottom: none; padding: 9px 14px; cursor: pointer;
          color: var(--primary-text-color); opacity: .7; font-size: 15px; border-radius: 12px 12px 0 0; white-space: nowrap;
@@ -1064,9 +1064,9 @@ const CSS = `
   .tab.on::before { left: -10px; background: radial-gradient(circle at 0 0, transparent 8.6px, var(--tb) 9.1px, var(--tb) 9.9px, var(--tbg) 10.4px); }
   .tab.on::after { right: -10px; background: radial-gradient(circle at 100% 0, transparent 8.6px, var(--tb) 9.1px, var(--tb) 9.9px, var(--tbg) 10.4px); }
   .tab.on.edge-l::before, .tab.on.edge-r::after { display: none; }
-  .body { --tb: color-mix(in srgb, var(--primary-color) 45%, transparent);
+  .body { --tb: color-mix(in srgb, var(--primary-color) 45%, var(--ha-card-background, var(--card-background-color, #1c1c1c)));
           border: 1px solid var(--tb); border-radius: 14px; padding: 6px 12px 10px;
-          background: color-mix(in srgb, var(--primary-color) 7%, var(--card-background-color, #1c1c1c)); }
+          background: color-mix(in srgb, var(--primary-color) 7%, var(--ha-card-background, var(--card-background-color, #1c1c1c))); }
   .body.sq-l { border-top-left-radius: 0; } .body.sq-r { border-top-right-radius: 0; }
   .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin-top: 8px; }
   .filters { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 12px; margin: 10px 0;

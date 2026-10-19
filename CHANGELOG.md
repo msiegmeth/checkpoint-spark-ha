@@ -4,6 +4,13 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.3] - 2026-10-19
+
+### Fixed
+- **Card: tab frame lines** looked thicker where the rounded corners meet the
+  tab and the content frame (semi-transparent lines overlapped). The frame
+  colour is now solid, so the line has the same strength everywhere.
+
 ## [0.9.2] - 2026-10-19
 
 ### Changed
