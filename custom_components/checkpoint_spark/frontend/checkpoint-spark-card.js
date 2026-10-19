@@ -12,7 +12,7 @@
  *   resolvers: [192.168.1.53]      # optional: own DNS resolvers (marked in host lists)
  *   names: {192.168.1.10: NAS}     # optional: names for IPs without a device tracker
  */
-const VERSION = "0.9.1";
+const VERSION = "0.9.2";
 const DOMAIN = "checkpoint_spark";
 
 const T = {
@@ -369,7 +369,7 @@ class CheckpointSparkCard extends HTMLElement {
           <div class="seg main" role="radiogroup">${PERIODS.map((p) => `<button role="radio" aria-checked="${st.period === p}" class="${st.period === p ? "on" : ""}" data-period="${p}">${esc(t["p_" + p])}</button>`).join("")}</div></div>
         ${this._summary()}
         ${this._tabs()}
-        <div class="body">${body}</div>
+        <div class="body ${this._edge}">${body}</div>
         ${this._popup()}
       </ha-card>`;
     this._bind();
@@ -381,9 +381,13 @@ class CheckpointSparkCard extends HTMLElement {
     const tabs = [["traffic", t.traffic, "mdi:swap-vertical-bold"], ["tp", t.tp, "mdi:shield-alert"], ["map", t.map, "mdi:earth"], ["system", t.system, "mdi:chip"]];
     const perRow = (this._w || 1000) >= 560 ? tabs.length : 2;
     const activeRow = Math.floor(Math.max(0, tabs.findIndex(([k]) => k === st.tab)) / perRow);
-    return `<div class="tabs ${perRow < tabs.length ? "rows" : ""}">${tabs.map(([k, l, i], n) => {
-      const row = Math.floor(n / perRow), front = row === activeRow;
-      return `<button role="tab" aria-selected="${st.tab === k}" class="tab ${st.tab === k ? "on" : ""} ${front ? "" : "back"}"
+    const rows = perRow < tabs.length, idx = Math.max(0, tabs.findIndex(([k]) => k === st.tab)) % perRow;
+    // active tab at the card edge -> square body corner there (flush, no break in the frame)
+    this._edge = `${idx === 0 ? "sq-l" : ""} ${rows && idx === perRow - 1 ? "sq-r" : ""}`;
+    return `<div class="tabs ${rows ? "rows" : ""}">${tabs.map(([k, l, i], n) => {
+      const row = Math.floor(n / perRow), front = row === activeRow, pos = n % perRow;
+      const edge = pos === 0 ? "edge-l" : rows && pos === perRow - 1 ? "edge-r" : "";
+      return `<button role="tab" aria-selected="${st.tab === k}" class="tab ${st.tab === k ? "on" : ""} ${front ? "" : "back"} ${edge}"
         style="order:${front ? 1000 + n : n}" data-tab="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`;
     }).join("")}</div>`;
   }
@@ -1042,25 +1046,28 @@ const CSS = `
   .pop-x { background: none; border: none; cursor: pointer; color: var(--secondary-text-color); padding: 4px; border-radius: 50%; }
   .pop-x:hover { background: var(--secondary-background-color); }
   .sum .s { font-size: 11px; color: var(--secondary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* folder tabs: the active tab and the content share one frame */
+  /* folder tabs: the active tab and the content share one frame; concave corners make a smooth transition */
   .tabs { --tb: color-mix(in srgb, var(--primary-color) 45%, transparent);
           --tbg: color-mix(in srgb, var(--primary-color) 7%, var(--card-background-color, #1c1c1c));
-          display: flex; gap: 4px; overflow-x: auto; padding: 0 10px; margin-top: 12px;
-          position: relative; z-index: 1; margin-bottom: -1px; scrollbar-width: none; }
-  .tab { background: none; border: 1px solid transparent; border-bottom: none; padding: 9px 14px; cursor: pointer;
+          display: flex; gap: 4px; padding: 0; margin-top: 12px; position: relative; z-index: 1; margin-bottom: -1px; }
+  .tab { position: relative; background: none; border: 1px solid transparent; border-bottom: none; padding: 9px 14px; cursor: pointer;
          color: var(--primary-text-color); opacity: .7; font-size: 15px; border-radius: 12px 12px 0 0; white-space: nowrap;
          display: inline-flex; align-items: center; gap: 7px; transition: background .15s, opacity .15s; }
   .tab ha-icon { --mdc-icon-size: 20px; }
-  .tabs.rows { flex-wrap: wrap; overflow: visible; gap: 0 4px; padding: 0 4px; }
+  .tabs.rows { flex-wrap: wrap; gap: 0 4px; }
   .tabs.rows .tab { flex: 1 1 calc(50% - 4px); justify-content: center; padding: 8px 6px; font-size: 14px; }
   .tabs.rows .tab.back { border: 1px solid var(--divider-color); border-bottom: none; opacity: .6; transform: scale(.96);
                          background: color-mix(in srgb, var(--primary-color) 4%, transparent); }
   .tab:hover:not(.on) { opacity: 1; background: color-mix(in srgb, var(--primary-color) 8%, transparent); }
-  .tab.on { opacity: 1; color: var(--primary-color); font-weight: 600; background: var(--tbg);
-            border-color: var(--tb); box-shadow: 0 1px 0 0 var(--tbg); }
+  .tab.on { opacity: 1; color: var(--primary-color); font-weight: 600; background: var(--tbg); border-color: var(--tb); }
+  .tab.on::before, .tab.on::after { content: ""; position: absolute; bottom: 0; width: 10px; height: 10px; pointer-events: none; }
+  .tab.on::before { left: -10px; background: radial-gradient(circle at 0 0, transparent 8.6px, var(--tb) 9.1px, var(--tb) 9.9px, var(--tbg) 10.4px); }
+  .tab.on::after { right: -10px; background: radial-gradient(circle at 100% 0, transparent 8.6px, var(--tb) 9.1px, var(--tb) 9.9px, var(--tbg) 10.4px); }
+  .tab.on.edge-l::before, .tab.on.edge-r::after { display: none; }
   .body { --tb: color-mix(in srgb, var(--primary-color) 45%, transparent);
           border: 1px solid var(--tb); border-radius: 14px; padding: 6px 12px 10px;
           background: color-mix(in srgb, var(--primary-color) 7%, var(--card-background-color, #1c1c1c)); }
+  .body.sq-l { border-top-left-radius: 0; } .body.sq-r { border-top-right-radius: 0; }
   .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin-top: 8px; }
   .filters { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 12px; margin: 10px 0;
              padding: 10px 12px; border-radius: 12px; background: var(--secondary-background-color, rgba(127,127,127,.06)); }

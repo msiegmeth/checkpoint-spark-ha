@@ -4,6 +4,13 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.2] - 2026-10-19
+
+### Changed
+- **Card: smoother tabs.** The active tab now flows into the content frame
+  with small rounded (concave) corners. A tab at the outer edge continues the
+  frame's side line straight down instead of breaking at the rounded corner.
+
 ## [0.9.1] - 2026-10-19
 
 ### Changed
