@@ -4,6 +4,13 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.3] - 2026-10-19
+
+### Changed
+- **Card: folder-style tabs.** The active tab and its content now share one
+  frame – the tab sits on top of a framed, slightly tinted content area, so it
+  is obvious which tab you are looking at.
+
 ## [0.8.2] - 2026-10-19
 
 ### Changed

@@ -12,7 +12,7 @@
  *   resolvers: [192.168.1.53]      # optional: own DNS resolvers (marked in host lists)
  *   names: {192.168.1.10: NAS}     # optional: names for IPs without a device tracker
  */
-const VERSION = "0.8.2";
+const VERSION = "0.8.3";
 const DOMAIN = "checkpoint_spark";
 
 const T = {
@@ -975,15 +975,21 @@ const CSS = `
   .sum .v { font-size: 20px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
   .sum .l { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--secondary-text-color); }
   .sum .s { font-size: 11px; color: var(--secondary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--divider-color); margin-top: 10px; }
-  .tab { background: none; border: none; padding: 10px 14px; cursor: pointer; color: var(--primary-text-color); opacity: .75;
-         font-size: 15px; border-bottom: 3px solid transparent; border-radius: 8px 8px 0 0; white-space: nowrap;
+  /* folder tabs: the active tab and the content share one frame */
+  .tabs { --tb: color-mix(in srgb, var(--primary-color) 45%, transparent);
+          --tbg: color-mix(in srgb, var(--primary-color) 7%, var(--card-background-color, #1c1c1c));
+          display: flex; gap: 4px; overflow-x: auto; padding: 0 10px; margin-top: 12px;
+          position: relative; z-index: 1; margin-bottom: -1px; scrollbar-width: none; }
+  .tab { background: none; border: 1px solid transparent; border-bottom: none; padding: 9px 14px; cursor: pointer;
+         color: var(--primary-text-color); opacity: .7; font-size: 15px; border-radius: 12px 12px 0 0; white-space: nowrap;
          display: inline-flex; align-items: center; gap: 7px; transition: background .15s, opacity .15s; }
   .tab ha-icon { --mdc-icon-size: 20px; }
   .tab:hover:not(.on) { opacity: 1; background: color-mix(in srgb, var(--primary-color) 8%, transparent); }
-  .tab.on { opacity: 1; color: var(--primary-color); font-weight: 600; border-bottom-color: var(--primary-color);
-            background: color-mix(in srgb, var(--primary-color) 10%, transparent); }
-  .body { padding: 4px 0; }
+  .tab.on { opacity: 1; color: var(--primary-color); font-weight: 600; background: var(--tbg);
+            border-color: var(--tb); box-shadow: 0 1px 0 0 var(--tbg); }
+  .body { --tb: color-mix(in srgb, var(--primary-color) 45%, transparent);
+          border: 1px solid var(--tb); border-radius: 14px; padding: 6px 12px 10px;
+          background: color-mix(in srgb, var(--primary-color) 7%, var(--card-background-color, #1c1c1c)); }
   .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin-top: 8px; }
   .filters { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 12px; margin: 10px 0;
              padding: 10px 12px; border-radius: 12px; background: var(--secondary-background-color, rgba(127,127,127,.06)); }
