@@ -4,6 +4,13 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.1] - 2026-10-19
+
+### Changed
+- **Card on phones:** the tabs no longer need sideways scrolling. On narrow
+  screens they wrap into two rows, and – like a stack of folders – the row
+  with the active tab moves to the front, directly above the content.
+
 ## [0.9.0] - 2026-10-19
 
 ### New

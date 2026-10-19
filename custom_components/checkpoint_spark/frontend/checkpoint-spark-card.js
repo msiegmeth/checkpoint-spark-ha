@@ -12,7 +12,7 @@
  *   resolvers: [192.168.1.53]      # optional: own DNS resolvers (marked in host lists)
  *   names: {192.168.1.10: NAS}     # optional: names for IPs without a device tracker
  */
-const VERSION = "0.9.0";
+const VERSION = "0.9.1";
 const DOMAIN = "checkpoint_spark";
 
 const T = {
@@ -368,12 +368,24 @@ class CheckpointSparkCard extends HTMLElement {
         <div class="periodbar"><ha-icon icon="mdi:calendar-range"></ha-icon>
           <div class="seg main" role="radiogroup">${PERIODS.map((p) => `<button role="radio" aria-checked="${st.period === p}" class="${st.period === p ? "on" : ""}" data-period="${p}">${esc(t["p_" + p])}</button>`).join("")}</div></div>
         ${this._summary()}
-        <div class="tabs">${[["traffic", t.traffic, "mdi:swap-vertical-bold"], ["tp", t.tp, "mdi:shield-alert"], ["map", t.map, "mdi:earth"], ["system", t.system, "mdi:chip"]]
-          .map(([k, l, i]) => `<button role="tab" aria-selected="${st.tab === k}" class="tab ${st.tab === k ? "on" : ""}" data-tab="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`).join("")}</div>
+        ${this._tabs()}
         <div class="body">${body}</div>
         ${this._popup()}
       </ha-card>`;
     this._bind();
+  }
+
+  /** Folder tabs; on narrow screens they wrap into rows and the row with the active tab moves to the front. */
+  _tabs() {
+    const t = this._t, st = this._st;
+    const tabs = [["traffic", t.traffic, "mdi:swap-vertical-bold"], ["tp", t.tp, "mdi:shield-alert"], ["map", t.map, "mdi:earth"], ["system", t.system, "mdi:chip"]];
+    const perRow = (this._w || 1000) >= 560 ? tabs.length : 2;
+    const activeRow = Math.floor(Math.max(0, tabs.findIndex(([k]) => k === st.tab)) / perRow);
+    return `<div class="tabs ${perRow < tabs.length ? "rows" : ""}">${tabs.map(([k, l, i], n) => {
+      const row = Math.floor(n / perRow), front = row === activeRow;
+      return `<button role="tab" aria-selected="${st.tab === k}" class="tab ${st.tab === k ? "on" : ""} ${front ? "" : "back"}"
+        style="order:${front ? 1000 + n : n}" data-tab="${k}"><ha-icon icon="${i}"></ha-icon>${esc(l)}</button>`;
+    }).join("")}</div>`;
   }
 
   _bind() {
@@ -1039,6 +1051,10 @@ const CSS = `
          color: var(--primary-text-color); opacity: .7; font-size: 15px; border-radius: 12px 12px 0 0; white-space: nowrap;
          display: inline-flex; align-items: center; gap: 7px; transition: background .15s, opacity .15s; }
   .tab ha-icon { --mdc-icon-size: 20px; }
+  .tabs.rows { flex-wrap: wrap; overflow: visible; gap: 0 4px; padding: 0 4px; }
+  .tabs.rows .tab { flex: 1 1 calc(50% - 4px); justify-content: center; padding: 8px 6px; font-size: 14px; }
+  .tabs.rows .tab.back { border: 1px solid var(--divider-color); border-bottom: none; opacity: .6; transform: scale(.96);
+                         background: color-mix(in srgb, var(--primary-color) 4%, transparent); }
   .tab:hover:not(.on) { opacity: 1; background: color-mix(in srgb, var(--primary-color) 8%, transparent); }
   .tab.on { opacity: 1; color: var(--primary-color); font-weight: 600; background: var(--tbg);
             border-color: var(--tb); box-shadow: 0 1px 0 0 var(--tbg); }
