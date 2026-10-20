@@ -12,7 +12,7 @@
  *   resolvers: [192.168.1.53]      # optional: own DNS resolvers (marked in host lists)
  *   names: {192.168.1.10: NAS}     # optional: names for IPs without a device tracker
  */
-const VERSION = "0.9.3";
+const VERSION = "0.9.4";
 const DOMAIN = "checkpoint_spark";
 
 const T = {
@@ -612,19 +612,22 @@ class CheckpointSparkCard extends HTMLElement {
       : noType ? `<div class="hint">${esc(t.noSyslogType)}</div>`
       : `<h4>${esc(t.flow)}: ${esc(t.dir)} → ${esc(t.type)} → ${esc(t.action)}</h4>${this._threatSankey(ev)}
          <h4>${esc(t.events)} · ${ev.length}</h4>${this._eventTable(ev)}`;
-    return filters + (st.type === "all" || st.type === "ips" ? this._perDay() : "") + events +
-      (st.type === "all" || st.type === "malware" ? this._amStatus() : "") +
-      (st.type === "all" ? this._drops() : "") + this._reportThreats();
+    // with an active selection only show blocks that can follow it (no direction/severity in report totals)
+    const plain = st.dir === "all" && st.sev === "all";
+    return filters + (plain && st.type !== "bot" ? this._perDay(st.type) : "") + events +
+      (plain && (st.type === "all" || st.type === "malware") ? this._amStatus() : "") +
+      (plain && st.type === "all" ? this._drops() : "") + (st.dir === "all" ? this._reportThreats() : "");
   }
 
   /** Stored detections per day (IPS / malware), stacked bars, 7 or 30 days. */
-  _perDay() {
+  _perDay(type = "all") {
     const daily = this._a("detections_30d", "daily");
     if (!daily) return "";
     const days = this._st.period === "monthly" ? 30 : 7;
     const keys = [];
     for (let i = days - 1; i >= 0; i--) keys.push(new Date(Date.now() - i * 864e5).toISOString().slice(0, 10));
-    const data = keys.map((k) => ({ k, ips: (daily[k] || {}).ips_attack || 0, mal: (daily[k] || {}).malware_detected || 0 }));
+    const data = keys.map((k) => ({ k, ips: type === "malware" ? 0 : (daily[k] || {}).ips_attack || 0,
+      mal: type === "ips" ? 0 : (daily[k] || {}).malware_detected || 0 }));
     if (!data.some((d) => d.ips + d.mal)) return "";
     const W = this._cw, H = 110, L = 34, B = 18, top = 6;
     const max = Math.max(1, ...data.map((d) => d.ips + d.mal));
@@ -641,7 +644,7 @@ class CheckpointSparkCard extends HTMLElement {
       if (i % every === 0) svg += `<text x="${x + w / 2}" y="${H - 4}" class="ax" text-anchor="middle">${esc(new Date(d.k).toLocaleDateString(this._loc, { day: "2-digit", month: "2-digit" }))}</text>`;
     });
     return `<h4>${esc(this._t.perDay)} · ${days} d</h4><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="chart">${svg}</svg>
-      <div class="legend">${this._pill(this._t.ips, TYPE_COLOR.ips)} ${this._pill(this._t.blocked, "#ef5350")}</div>`;
+      <div class="legend">${type !== "malware" ? this._pill(this._t.ips, TYPE_COLOR.ips) : ""} ${type !== "ips" ? this._pill(this._t.blocked, "#ef5350") : ""}</div>`;
   }
 
   /** Anti-malware status from syslog (scanned hosts / unique threats per hour, day, week). */
@@ -740,19 +743,20 @@ class CheckpointSparkCard extends HTMLElement {
   /** Report totals (no time/source) for the selected period and type filter. */
   _reportThreats() {
     const t = this._t, st = this._st;
+    const bySev = (i) => st.sev === "all" || SEV[String(i.severity ?? "").toLowerCase()] === st.sev;
     let out = `<h4 class="sep">${esc(t.reportPart)}</h4>`;
     if (st.type === "all" || st.type === "ips") {
-      const prot = this._a(this._pk("ips_events"), "top_protections");
+      const prot = this._a(this._pk("ips_events"), "top_protections")?.filter(bySev);
       out += `<h4>${esc(t.protections)}</h4>` + (prot ? this._table(["", t.name, t.hits, t.sev], prot.slice(0, 10).map((i) =>
         `<tr><td class="ic"><ha-icon icon="mdi:shield-alert-outline"></ha-icon></td><td class="n">${esc(i.name)}${i.cve ? `<div class="muted small">${esc(i.cve.split(",")[0])}</div>` : ""}</td><td class="r">${this._num(i.sessions)}</td><td class="r">${this._sev(i.severity)}</td></tr>`)) : `<div class="muted pad">${esc(t.noReport)}</div>`);
     }
     if (st.type === "all" || st.type === "malware") {
-      const mal = this._a(this._pk("virus_incidents"), "top_malwares") || [];
+      const mal = (this._a(this._pk("virus_incidents"), "top_malwares") || []).filter(bySev);
       out += `<h4>${esc(t.malware)}</h4>` + this._table(["", t.name, t.incidents, t.sev], mal.slice(0, 10).map((i) =>
         `<tr><td class="ic"><ha-icon icon="mdi:virus-outline"></ha-icon></td><td class="n">${esc(i.name)}</td><td class="r">${this._num(i.incidents)}</td><td class="r">${this._sev(i.severity)}</td></tr>`)) +
         `<div class="muted small pad">${esc(t.dnsHint)}</div>`;
     }
-    if (st.type !== "ips") {
+    if (st.type !== "ips" && st.sev === "all") {
       const hosts = this._a(this._pk("infected_hosts"), "top_infected_hosts") || [];
       const max = Math.max(1, ...hosts.map((h) => h.count || 0));
       out += `<h4>${esc(t.hosts)}</h4>` + this._table(["", t.host, t.incidents], hosts.map((h) =>

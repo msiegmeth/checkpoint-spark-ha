@@ -4,6 +4,17 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.4] - 2026-10-20
+
+### Changed
+- **Card, Threat Prevention: selections show only what fits.** As soon as a
+  type, direction or severity is selected, general blocks that can't follow
+  the selection are hidden: firewall drops (only shown with no selection),
+  anti-malware status (only with "All" or "Malware / DNS"), hits per day
+  (only the selected type, hidden for a direction or severity) and the report
+  totals (hidden for a direction, because the report has none; with a
+  severity, the top lists only show entries of that severity).
+
 ## [0.9.3] - 2026-10-19
 
 ### Fixed
