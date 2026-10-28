@@ -1,8 +1,11 @@
 # Example dashboard for the Check Point Quantum Spark integration.
 # Standard cards only. Settings > Dashboards > Add dashboard > New from scratch,
 # then ⋮ > Edit > ⋮ > Raw configuration editor and paste this file.
-# Entity IDs assume the device name "Quantum Spark" without area prefix;
-# adjust "sensor.quantum_spark_" if yours differ.
+# IMPORTANT: standard cards need fixed entity IDs. They depend on the device name
+# and on the language Home Assistant used when the entities were created, so they
+# often differ from "sensor.quantum_spark_…" below – check Settings > Entities
+# (filter "Check Point") and replace the prefix. Easier: use the card shipped
+# with the integration (type: custom:checkpoint-spark-card), it needs no IDs.
 title: "Check Point"
 views:
   - title: "Security"

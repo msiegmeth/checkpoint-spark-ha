@@ -12,7 +12,7 @@
  *   resolvers: [192.168.1.53]      # optional: own DNS resolvers (marked in host lists)
  *   names: {192.168.1.10: NAS}     # optional: names for IPs without a device tracker
  */
-const VERSION = "0.9.4";
+const VERSION = "0.10.0";
 const DOMAIN = "checkpoint_spark";
 
 const T = {
@@ -45,7 +45,8 @@ const T = {
     services: "Services", mapLoading: "Loading map…", noGeo: "The country database is being prepared (first start: up to a minute) – or syslog reception is off.",
     noMapData: "No data for this direction yet.", mapHintIn: "Drops: last 24 h (syslog). IPS: selected period. Country of the source IP.",
     mapHintOut: "From the report's top sites (resolved via DNS – CDN locations often show the nearest node) and app-control logs (sample).",
-    perf: "Load (OpenTelemetry)", newConns: "New connections", perSec: "/s", interfaces: "Throughput per interface",
+    perf: "Load (OpenTelemetry)", newConns: "New connections", perSec: "/s", interfaces: "Throughput per interface", ofGbit: "bars = share of 1 Gbit/s", lanSwitch: "LAN switch (sum)",
+    if_vlan: "VLAN", if_ppp: "PPPoE", if_internal: "internal (CPU port)",
     iface: "Interface", tunnels: "VPN tunnels", contractList: "Contracts", sku: "Contract", expires: "Expires",
     drops: "Firewall drops", dropsH: "per hour", drops24: "24 h", topSrc: "Top sources (24 h)", topSvc: "Top services (24 h)",
     byReason: "Dropped packets by reason (since gateway start)", amStatus: "Anti-malware status",
@@ -82,7 +83,8 @@ const T = {
     services: "Dienste", mapLoading: "Karte wird geladen…", noGeo: "Die Länderdatenbank wird vorbereitet (beim ersten Start bis zu einer Minute) – oder der Syslog-Empfang ist aus.",
     noMapData: "Für diese Richtung gibt es noch keine Daten.", mapHintIn: "Drops: letzte 24 h (Syslog). IPS: gewählter Zeitraum. Land der Quell-IP.",
     mapHintOut: "Aus den Top-Seiten des Reports (per DNS aufgelöst – bei CDNs oft der nächste Knoten) und App-Control-Logs (Stichprobe).",
-    perf: "Auslastung (OpenTelemetry)", newConns: "Neue Verbindungen", perSec: "/s", interfaces: "Durchsatz je Schnittstelle",
+    perf: "Auslastung (OpenTelemetry)", newConns: "Neue Verbindungen", perSec: "/s", interfaces: "Durchsatz je Schnittstelle", ofGbit: "Balken = Anteil an 1 Gbit/s", lanSwitch: "LAN-Switch (Summe)",
+    if_vlan: "VLAN", if_ppp: "PPPoE", if_internal: "intern (CPU-Port)",
     iface: "Schnittstelle", tunnels: "VPN-Tunnel", contractList: "Verträge", sku: "Vertrag", expires: "Läuft ab",
     drops: "Firewall-Drops", dropsH: "pro Stunde", drops24: "24 h", topSrc: "Top-Quellen (24 h)", topSvc: "Top-Dienste (24 h)",
     byReason: "Verworfene Pakete nach Grund (seit Gerätestart)", amStatus: "Anti-Malware-Status",
@@ -287,12 +289,19 @@ class CheckpointSparkCard extends HTMLElement {
     let dev = this._config.device_id;
     const all = Object.values(hass.entities || {}).filter((e) => e.platform === DOMAIN);
     if (!dev && all.length) dev = all.find((e) => e.device_id)?.device_id;
-    const map = {};
+    const map = {}, ifs = {};
     for (const e of all) {
       if (dev && e.device_id !== dev) continue;
-      map[e.translation_key || e.entity_id.split(".")[1]] = e.entity_id;
+      const tk = e.translation_key || "";
+      if (tk === "interface_rx" || tk === "interface_tx") {   // one pair per interface, found by its attribute
+        const n = hass.states[e.entity_id]?.attributes?.interface;
+        if (n) (ifs[n] = ifs[n] || {})[tk.slice(-2)] = e.entity_id;
+        continue;
+      }
+      map[tk || e.entity_id.split(".")[1]] = e.entity_id;
     }
     this._device = dev;
+    this._ifs = ifs;
     return map;
   }
 
@@ -354,6 +363,9 @@ class CheckpointSparkCard extends HTMLElement {
       this.shadowRoot.innerHTML = `<style>${CSS}</style><ha-card><div class="pad muted">${esc(t.noDevice)}</div></ha-card>`;
       return;
     }
+    // only report types enabled in the integration options (default: daily only)
+    const periods = PERIODS.filter((p) => this._map[`${p}_traffic`]);
+    if (periods.length && !periods.includes(st.period)) st.period = periods.includes("daily") ? "daily" : periods[0];
     const dev = this._device && this._hass.devices ? this._hass.devices[this._device] : null;
     const title = this._config.title || (dev && (dev.name_by_user || dev.name)) || t.title;
     if (st.tab === "system") this._loadStats();
@@ -366,7 +378,7 @@ class CheckpointSparkCard extends HTMLElement {
           <div class="chips">${this._chips()}</div>
         </div>
         <div class="periodbar"><ha-icon icon="mdi:calendar-range"></ha-icon>
-          <div class="seg main" role="radiogroup">${PERIODS.map((p) => `<button role="radio" aria-checked="${st.period === p}" class="${st.period === p ? "on" : ""}" data-period="${p}">${esc(t["p_" + p])}</button>`).join("")}</div></div>
+          <div class="seg main" role="radiogroup">${(periods.length ? periods : PERIODS).map((p) => `<button role="radio" aria-checked="${st.period === p}" class="${st.period === p ? "on" : ""}" data-period="${p}">${esc(t["p_" + p])}</button>`).join("")}</div></div>
         ${this._summary()}
         ${this._tabs()}
         <div class="body ${this._edge}">${body}</div>
@@ -771,7 +783,8 @@ class CheckpointSparkCard extends HTMLElement {
   /** Long-term statistics (recorder) for the system charts; cached per period for 5 minutes. */
   _loadStats() {
     const ids = ["cpu_temperature", "ddr_temperature", "memory_used", "cpu_load", "memory_load", "wan_download",
-      "wan_upload", "wan_latency", "wan_jitter", "connections", "connection_rate"].map((k) => this._map[k]).filter(Boolean);
+      "wan_upload", "wan_latency", "wan_jitter", "connections", "connection_rate"].map((k) => this._map[k]).filter(Boolean)
+      .concat(Object.values(this._ifs || {}).flatMap((i) => [i.rx, i.tx]).filter(Boolean));
     if (!ids.length || !this._hass?.callWS) return;
     const period = this._st.period;
     const c = this._stats;
@@ -990,19 +1003,58 @@ class CheckpointSparkCard extends HTMLElement {
       this._interfaces();
   }
 
+  /** Throughput per interface: bars against 1 Gbit/s, history per port, VLAN / PPPoE / internal ports foldable. */
   _interfaces() {
+    const t = this._t, st = this._st, GBIT = 1000;
+    const list = Object.entries(this._ifs || {}).map(([name, ids]) => {
+      const a = this._hass.states[ids.rx]?.attributes || {};
+      const num = (id) => { const n = parseFloat(this._hass.states[id]?.state); return isNaN(n) ? null : n; };
+      return { name, ids, kind: a.kind || "port", parent: a.parent || null, rx: num(ids.rx), tx: num(ids.tx) };
+    }).filter((i) => i.rx != null || i.tx != null);   // only interfaces the gateway currently reports
+    if (!list.length) return this._interfacesOld();
+    const names = new Set(list.map((i) => i.name));
+    const top = list.filter((i) => !i.parent || !names.has(i.parent))
+      .sort((a, b) => (a.name === "WAN" ? -1 : b.name === "WAN" ? 1 : a.kind === "switch" ? -1 : b.kind === "switch" ? 1 : a.name.localeCompare(b.name)));
+    const kids = (p) => {   // children incl. grandchildren (WAN -> WAN.31 -> ppp0)
+      const out = [];
+      const walk = (n, d) => list.filter((i) => i.parent === n).sort((a, b) => a.name.localeCompare(b.name))
+        .forEach((i) => { out.push([i, d]); walk(i.name, d + 1); });
+      walk(p, 1);
+      return out;
+    };
+    const label = (i) => i.kind === "switch" ? `${esc(t.lanSwitch)} <span class="muted small">${esc(i.name)}</span>`
+      : `${esc(i.name)}${t["if_" + i.kind] ? ` <span class="muted small">· ${esc(t["if_" + i.kind])}</span>` : ""}`;
+    const bars = (i) => `<div class="ifbars">${this._bar(i.rx || 0, GBIT, "#42a5f5")}${this._bar(i.tx || 0, GBIT, "#26a69a")}</div>`;
+    const row = (i, d = 0) => `<div class="ifrow" style="padding-left:${d * 16}px">
+        <div class="ifn">${d ? '<span class="muted">↳ </span>' : ""}${label(i)}</div>
+        <div class="ifv"><span style="color:#42a5f5">↓ ${this._num(i.rx, 1)}</span> <span style="color:#26a69a">↑ ${this._num(i.tx, 1)}</span> <span class="muted small">Mbit/s</span></div>
+        ${bars(i)}</div>`;
+    const chart = (i) => this._lineChart([{ id: i.ids.rx, label: "↓", color: "#42a5f5" }, { id: i.ids.tx, label: "↑", color: "#26a69a" }], "Mbit/s", 1);
+    return `<h4>${esc(t.interfaces)} <span class="muted small">· ${esc(t.ofGbit)}</span></h4>` + top.map((i) => {
+      const k = kids(i.name), key = "if:" + i.name, open = st.open.has(key);
+      return `<div class="ifblock">${row(i)}${chart(i)}${k.length ? `<div class="iftoggle" data-ev="${esc(key)}">${open ? "▾" : "▸"} ${esc(k.map(([c]) => c.name).join(", "))}</div>` +
+        (open ? k.map(([c, d]) => row(c, d) + chart(c)).join("") : "") : ""}</div>`;
+    }).join("");
+  }
+
+  /** Before 0.9.5 (no interface sensors yet): table from the WAN sensor's attribute. */
+  _interfacesOld() {
     const ifs = this._a("wan_download", "interfaces");
     if (!ifs) return "";
     const rows = Object.entries(ifs).filter(([, v]) => (v.rx_mbit || 0) + (v.tx_mbit || 0) > 0)
       .sort((a, b) => (b[1].rx_mbit + b[1].tx_mbit) - (a[1].rx_mbit + a[1].tx_mbit));
-    const max = Math.max(1, ...rows.map(([, v]) => Math.max(v.rx_mbit || 0, v.tx_mbit || 0)));
     return `<h4>${esc(this._t.interfaces)}</h4>` + this._table([this._t.iface, "↓ Mbit/s", "↑ Mbit/s"], rows.map(([k, v]) =>
-      `<tr><td class="n">${esc(k)}${this._bar(Math.max(v.rx_mbit || 0, v.tx_mbit || 0), max, PALETTE[0])}</td><td class="r">${this._num(v.rx_mbit, 1)}</td><td class="r">${this._num(v.tx_mbit, 1)}</td></tr>`));
+      `<tr><td class="n">${esc(k)}${this._bar(Math.max(v.rx_mbit || 0, v.tx_mbit || 0), 1000, PALETTE[0])}</td><td class="r">${this._num(v.rx_mbit, 1)}</td><td class="r">${this._num(v.tx_mbit, 1)}</td></tr>`));
   }
 }
 
 const CSS = `
   :host { display: block; }
+  .ifblock { border-top: 1px solid var(--divider-color); padding: 6px 0 2px; }
+  .ifrow { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 4px 0; }
+  .ifrow .ifbars { grid-column: 1 / -1; display: grid; gap: 3px; }
+  .ifv { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .iftoggle { cursor: pointer; color: var(--primary-color); padding: 4px 0 6px; font-size: 13px; }
   ha-card { padding: 12px 14px 10px; overflow: hidden; }
   .pad { padding: 8px 2px; }
   .muted { color: var(--secondary-text-color); }

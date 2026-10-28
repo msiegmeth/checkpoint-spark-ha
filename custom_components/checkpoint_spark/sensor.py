@@ -611,6 +611,30 @@ def _tm_wan(st, key: str) -> float | None:
     return None
 
 
+def _tm_if_layout(st) -> dict[str, dict[str, str | None]]:
+    """Kind and parent per active interface: VLANs (``WAN.31``) and PPPoE (``ppp0``) belong to their
+    port; a single active switch port is the sum of the built-in LAN switch, ``eth*`` next to it is
+    the switch's internal CPU port."""
+    ifs = _tm_interfaces(st)
+    drivers = {lab.get("name"): lab.get("driver") or "" for lab, _ in st.values("system_network_interface_state")}
+    switch = [n for n in ifs if "switch" in drivers.get(n, "").lower()]
+    vlan_wan = next((n for n in ifs if n.startswith("WAN.")), None)
+    out: dict[str, dict[str, str | None]] = {}
+    for name in ifs:
+        if "." in name:
+            kind, parent = "vlan", name.split(".", 1)[0]
+        elif name.startswith("ppp"):
+            kind, parent = "ppp", vlan_wan or ("WAN" if "WAN" in ifs else None)
+        elif name in switch:
+            kind, parent = ("switch" if len(switch) == 1 else "port"), None
+        elif name.startswith("eth") and len(switch) == 1:
+            kind, parent = "internal", switch[0]
+        else:
+            kind, parent = "port", None
+        out[name] = {"kind": kind, "parent": parent}
+    return out
+
+
 def _tm_sdwan(st, metric: str) -> tuple[float | None, dict]:
     vals = st.values(metric)
     if not vals:
@@ -730,6 +754,47 @@ class SparkTelemetryValueSensor(SparkEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         return self.entity_description.value_fn(self.coordinator.telemetry)[1] or None
+
+
+class SparkInterfaceSensor(SparkEntity, SensorEntity):
+    """Throughput of one gateway interface (received or sent), created when the interface shows up."""
+
+    _attr_device_class = SensorDeviceClass.DATA_RATE
+    _attr_native_unit_of_measurement = UnitOfDataRate.MEGABITS_PER_SECOND
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator: SparkCoordinator, name: str, direction: str) -> None:
+        super().__init__(coordinator, f"if_{name}_{direction}")
+        self._name, self._dir = name, direction
+        self._attr_translation_key = f"interface_{direction}"
+        self._attr_translation_placeholders = {"interface": name}
+        self._attr_icon = "mdi:download-network" if direction == "rx" else "mdi:upload-network"
+        self._layout: dict[str, str | None] = {"kind": "port", "parent": None}
+        self._pending = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        store = self.coordinator.telemetry
+        store.listeners.append(self._message)
+        self.async_on_remove(lambda: store.listeners.remove(self._message))
+
+    def _message(self) -> None:
+        if self._pending is None:
+            self._pending = self.hass.loop.call_later(10, self._write)
+
+    def _write(self) -> None:
+        self._pending = None
+        self._layout = _tm_if_layout(self.coordinator.telemetry).get(self._name, self._layout)
+        self.async_write_ha_state()
+
+    @property
+    def native_value(self) -> float | None:
+        return _tm_interfaces(self.coordinator.telemetry).get(self._name, {}).get(f"{self._dir}_mbit")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"interface": self._name, **self._layout}
 
 
 class SparkTelemetrySensor(SparkEntity, SensorEntity):
@@ -901,6 +966,24 @@ async def async_setup_entry(
     if coordinator.telemetry is not None:
         entities.append(SparkTelemetrySensor(coordinator))
         entities.extend(SparkTelemetryValueSensor(coordinator, d) for d in TELEMETRY_SENSORS)
+        # Interfaces: keep those seen before, add new ones as soon as they carry traffic data
+        prefix = f"{entry.unique_id}_if_"
+        known = {
+            e.unique_id[len(prefix):].rsplit("_", 1)[0]
+            for e in er.async_entries_for_config_entry(registry, entry.entry_id)
+            if e.domain == "sensor" and e.unique_id.startswith(prefix)
+        }
+        entities.extend(SparkInterfaceSensor(coordinator, n, d) for n in sorted(known) for d in ("rx", "tx"))
+        store = coordinator.telemetry
+
+        def add_interfaces() -> None:
+            new = [n for n in _tm_interfaces(store) if n not in known]
+            if new:
+                known.update(new)
+                async_add_entities(SparkInterfaceSensor(coordinator, n, d) for n in new for d in ("rx", "tx"))
+
+        store.listeners.append(add_interfaces)
+        entry.async_on_unload(lambda: store.listeners.remove(add_interfaces))
     if coordinator.syslog:
         entities.append(SparkSyslogSensor(coordinator))
         if coordinator.geo is not None:

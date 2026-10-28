@@ -4,6 +4,37 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] - 2026-10-28
+
+### New
+- **Throughput per interface with history** (OpenTelemetry): for every interface
+  the gateway reports, the integration now creates two sensors (*received* /
+  *sent*, Mbit/s) – new interfaces are added automatically as soon as they
+  carry traffic. The card's System tab shows each port with bars against
+  1 Gbit/s, the current values and a chart over the selected period. VLANs
+  (e.g. `WAN.31`), PPPoE (`ppp0`) and the switch's internal port fold out
+  below their port; the built-in LAN switch is shown as *LAN switch (sum)*,
+  because the gateway only reports the total of its ports.
+
+### Fixed
+- **Card: only enabled periods.** The period buttons (1 h · 24 h · 7 days ·
+  30 days) now only show the report types enabled in the integration options.
+  Before, all four were shown even though only *24 h* is enabled by default,
+  so the other periods stayed empty – it looked as if the card didn't match
+  the entities.
+
+### Changed
+- **Less load on the gateway:** status values (CPU, memory, internet, VPN) are
+  read at most every 15 minutes, even if a report type is polled more often.
+- **Documentation:** the card finds its sensors by device (no entity IDs
+  needed); the example dashboard with standard cards explains that its entity
+  IDs must be adjusted; the OpenTelemetry section warns about memory/CPU use of
+  the agent on the gateway.
+
+### Update notes
+- Nothing to do. If you built your own dashboard from `examples/dashboard.yaml`,
+  check its entity IDs under *Settings → Entities* or switch to the card.
+
 ## [0.9.4] - 2026-10-20
 
 ### Changed

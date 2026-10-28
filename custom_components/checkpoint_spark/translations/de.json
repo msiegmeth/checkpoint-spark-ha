@@ -367,6 +367,12 @@
       },
       "threat_map": {
         "name": "Bedrohungskarte (Länder)"
+      },
+      "interface_rx": {
+        "name": "{interface} empfangen"
+      },
+      "interface_tx": {
+        "name": "{interface} gesendet"
       }
     },
     "binary_sensor": {

@@ -141,6 +141,7 @@ contains (e.g. the hourly report has no IPS or high-risk figures).
 | Dropped packets | count since gateway start (attribute `by_reason`, `rate_per_s`) |
 | WAN download / upload | Mbit/s (attribute `interfaces` with all interfaces) |
 | WAN latency / jitter / packet loss | ms / ms / % (SD-WAN probes, attribute `per_isp`) |
+| `<interface>` received / sent | Mbit/s, one pair per interface, added automatically (attributes `interface`, `kind` port/switch/vlan/ppp/internal, `parent`) |
 | Telemetry series (diagnostic) | received series, requests, rejected, metric names |
 
 The device shows the firmware version and MAC address from the report.
@@ -223,6 +224,11 @@ All actions accept an optional `config_entry_id` when several gateways are confi
 The integration ships its own card – no extra resources needed. *Add card* →
 search for **Check Point Quantum Spark** → choose the gateway.
 
+The card finds its sensors by device, not by entity ID – renamed entities,
+another device name or another Home Assistant language don't matter. The period
+buttons only show the report types enabled in the integration options
+(*Configure* → report types; default is **24 h** only).
+
 - Period selector **1 h · 24 h · 7 days · 30 days** for everything
 - Summary like the gateway's PDF report
 - **Traffic**: volume over time, flow Download/Upload → categories, top apps /
@@ -247,7 +253,11 @@ card – the logos are trademarks of their owners. Fallback: Material Design Ico
 ## Dashboard example (standard cards)
 
 An example dashboard using only standard cards is in
-[examples/dashboard.yaml](examples/dashboard.yaml).
+[examples/dashboard.yaml](examples/dashboard.yaml). Standard cards need fixed
+entity IDs, and these depend on the device name and the language Home Assistant
+used when the entities were created – check *Settings → Entities* (filter
+*Check Point*) and adjust the IDs. The card above needs no IDs and is the
+recommended way.
 
 ## Diagnostics
 

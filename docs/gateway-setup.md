@@ -122,6 +122,12 @@ Resulting sensors: CPU load, memory load, booted, connections, new
 connections/s, WAN download/upload (interface `ppp0`, else `WAN`), WAN latency,
 jitter and packet loss (SD-WAN probes of the ISP link).
 
+> **Gateway load:** the OpenTelemetry agent runs permanently on the gateway and
+> needs memory and CPU there (preview feature). On small models or gateways that
+> already use most of their memory, watch *Memory* / *CPU* after enabling it and
+> switch it off again if the gateway gets slow. Everything else in this
+> integration works without it.
+
 The gateway downloads its OpenTelemetry agent from Check Point, so it needs
 internet access. Only POSTs from the gateway's IP with the right credentials
 are accepted; payloads are size-limited and only the newest value per series is

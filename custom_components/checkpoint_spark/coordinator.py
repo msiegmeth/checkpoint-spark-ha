@@ -46,12 +46,15 @@ type SparkConfigEntry = ConfigEntry[SparkCoordinator]
 # A report counts as due slightly before its interval ends (poll jitter).
 _DUE_TOLERANCE = timedelta(seconds=60)
 
+# Status commands at most every 15 min, even with shorter report intervals (gateway load)
+_SHOW_STATUS = timedelta(minutes=15) - _DUE_TOLERANCE
+
 # show command -> (parser, refresh interval); parsers keep whitelisted fields only
 _SHOW_COMMANDS = {
-    sysinfo.SHOW_DIAG: (lambda out, today: sysinfo.parse_diag(out), timedelta(0)),
-    sysinfo.SHOW_MEMORY: (lambda out, today: sysinfo.parse_memory(out), timedelta(0)),
-    sysinfo.SHOW_INTERNET: (lambda out, today: sysinfo.parse_internet(out), timedelta(0)),
-    sysinfo.SHOW_VPN: (lambda out, today: sysinfo.parse_vpn(out), timedelta(0)),
+    sysinfo.SHOW_DIAG: (lambda out, today: sysinfo.parse_diag(out), _SHOW_STATUS),
+    sysinfo.SHOW_MEMORY: (lambda out, today: sysinfo.parse_memory(out), _SHOW_STATUS),
+    sysinfo.SHOW_INTERNET: (lambda out, today: sysinfo.parse_internet(out), _SHOW_STATUS),
+    sysinfo.SHOW_VPN: (lambda out, today: sysinfo.parse_vpn(out), _SHOW_STATUS),
     sysinfo.SHOW_LICENSE: (sysinfo.parse_license, timedelta(hours=6)),
     sysinfo.SHOW_VERSION: (lambda out, today: sysinfo.parse_version(out), timedelta(hours=6)),
     sysinfo.SHOW_FW_UPGRADE: (lambda out, today: sysinfo.parse_fw_upgrade(out), timedelta(hours=6)),

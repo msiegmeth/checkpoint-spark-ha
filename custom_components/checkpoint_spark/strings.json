@@ -367,6 +367,12 @@
       },
       "threat_map": {
         "name": "Threat map (countries)"
+      },
+      "interface_rx": {
+        "name": "{interface} received"
+      },
+      "interface_tx": {
+        "name": "{interface} sent"
       }
     },
     "binary_sensor": {

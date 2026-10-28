@@ -94,6 +94,16 @@ Quantum Spark** → Gateway wählen. Zeitraum 1 h / 24 h / 7 Tage / 30 Tage,
 Reiter Traffic, Threat Prevention (Filter Art/Richtung/Schwere, Ereignisse je
 Meldung und Host zusammengefasst) und System. Marken-Icons von Simple Icons (CC0).
 
+Die Karte findet ihre Sensoren über das Gerät, nicht über Entity-IDs –
+umbenannte Entitäten, ein anderer Gerätename oder eine andere Sprache stören
+nicht. Die Zeitraum-Knöpfe zeigen nur die Report-Typen, die in den Optionen der
+Integration aktiv sind (*Konfigurieren* → Report-Typen; Standard nur **24 h**).
+
+Das Beispiel-Dashboard [examples/dashboard.yaml](examples/dashboard.yaml)
+nutzt Standardkarten mit festen Entity-IDs. Diese hängen vom Gerätenamen und von
+der Sprache beim Anlegen ab → unter *Einstellungen → Entitäten* (Filter
+*Check Point*) prüfen und anpassen. Empfohlen ist die Karte.
+
 ## Syslog am Spark einstellen
 
 Log-Server/Syslog auf die IP von Home Assistant, Port wie in der Integration
