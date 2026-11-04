@@ -4,6 +4,19 @@ All notable changes are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/), versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.10.1] - 2026-11-04
+
+### Changed
+- **Less load on the recorder.** Sensors fed by the gateway's push data
+  (syslog counters and rolling windows, OpenTelemetry values, throughput per
+  interface, threat map) now update their state at most **once per minute**
+  instead of every 5–30 seconds. Values and charts stay the same, the
+  database just grows much more slowly (in a real installation these sensors
+  caused about 13 % of all state writes).
+
+### Update notes
+- No configuration needed. Restart Home Assistant after the update.
+
 ## [0.10.0] - 2026-10-28
 
 ### New

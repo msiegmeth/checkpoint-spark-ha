@@ -43,3 +43,7 @@ EVENT_DEDUP_HOURS: Final = 24
 EVENT_REPORT_ORDER: Final = ["hourly", "daily", "weekly", "monthly"]
 
 REQUEST_TIMEOUT: Final = 60
+
+# Push-driven sensors (syslog, OpenTelemetry) write their state at most this often (seconds);
+# keeps recorder load low – the values change every few seconds
+STATE_WRITE_INTERVAL: Final = 60

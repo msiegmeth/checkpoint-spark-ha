@@ -29,7 +29,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .const import DOMAIN, STATE_WRITE_INTERVAL
 from .coordinator import SparkConfigEntry, SparkCoordinator
 from .report import _chart, _has_summary, _history, _int, _summary, blades_of
 
@@ -476,9 +476,9 @@ class SparkSyslogSensor(SparkEntity, SensorEntity):
         self.async_on_remove(self.coordinator.syslog.async_add_listener(self._message))
 
     def _message(self) -> None:
-        # many messages per second are possible: write the state at most every 5 s
+        # many messages per second are possible: write the state at most every STATE_WRITE_INTERVAL s
         if self._pending is None:
-            self._pending = self.hass.loop.call_later(5, self._write)
+            self._pending = self.hass.loop.call_later(STATE_WRITE_INTERVAL, self._write)
 
     def _write(self) -> None:
         self._pending = None
@@ -522,7 +522,7 @@ class SparkLogSensor(SparkEntity, SensorEntity):
 
     def _message(self) -> None:
         if self._pending is None:
-            self._pending = self.hass.loop.call_later(10, self._write)
+            self._pending = self.hass.loop.call_later(STATE_WRITE_INTERVAL, self._write)
 
     def _write(self) -> None:
         self._pending = None
@@ -741,7 +741,7 @@ class SparkTelemetryValueSensor(SparkEntity, SensorEntity):
 
     def _message(self) -> None:
         if self._pending is None:
-            self._pending = self.hass.loop.call_later(10, self._write)
+            self._pending = self.hass.loop.call_later(STATE_WRITE_INTERVAL, self._write)
 
     def _write(self) -> None:
         self._pending = None
@@ -781,7 +781,7 @@ class SparkInterfaceSensor(SparkEntity, SensorEntity):
 
     def _message(self) -> None:
         if self._pending is None:
-            self._pending = self.hass.loop.call_later(10, self._write)
+            self._pending = self.hass.loop.call_later(STATE_WRITE_INTERVAL, self._write)
 
     def _write(self) -> None:
         self._pending = None
@@ -817,7 +817,7 @@ class SparkTelemetrySensor(SparkEntity, SensorEntity):
 
     def _message(self) -> None:
         if self._pending is None:
-            self._pending = self.hass.loop.call_later(10, self._write)
+            self._pending = self.hass.loop.call_later(STATE_WRITE_INTERVAL, self._write)
 
     def _write(self) -> None:
         self._pending = None
@@ -860,7 +860,7 @@ class SparkThreatMapSensor(SparkEntity, SensorEntity):
 
     def _message(self) -> None:
         if self._pending is None:
-            self._pending = self.hass.loop.call_later(30, self._write)
+            self._pending = self.hass.loop.call_later(STATE_WRITE_INTERVAL, self._write)
 
     def _write(self) -> None:
         self._pending = None
